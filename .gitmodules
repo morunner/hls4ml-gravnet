@@ -1,0 +1,6 @@
+[submodule "hls4ml"]
+	path = hls4ml
+	url = git@github.com:morunner/hls4ml.git
+[submodule "quantized-gravnet"]
+	path = quantized-gravnet
+	url = https://github.com/lorenzo-as/quantized-gravnet.git

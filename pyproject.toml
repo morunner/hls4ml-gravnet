@@ -1,0 +1,7 @@
+[project]
+name = "hls4ml-gravnet"
+version = "0.1.0"
+description = "hls4ml GravNet"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []

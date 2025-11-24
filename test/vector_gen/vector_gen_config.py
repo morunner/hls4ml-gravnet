@@ -3,10 +3,12 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class GenerateTestVectorsConfig:
-    B: int = 10
+    B: int = 1
     V: int = 128
     F: int = 4
-    vector_file_path: str = 'test_vectors.h'
+    S: int = 8
+    n_neighbours: int = 4
+    vector_file_path: str = 'test/hls/include/test_vectors.h'
 
 
 @dataclass(frozen=True)

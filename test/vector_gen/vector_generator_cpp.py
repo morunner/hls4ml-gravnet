@@ -6,6 +6,7 @@ import numpy as np
 from jinja2 import Template
 
 from test.vector_gen.vector import TestVectorBase
+from test.vector_gen.vector_gen_config import gen_config
 from test.vector_gen.vector_template import template_str as vector_template_str
 
 
@@ -15,7 +16,7 @@ class VectorGeneratorCpp:
 
     @staticmethod
     def get_fields(obj):
-        return [f.name for f in fields(obj) if f.name != 'name']
+        return [f.name for f in fields(obj) if f.name != 'name' and getattr(obj, f.name) is not None]
 
     @staticmethod
     def is_array(obj, field_name):
@@ -53,15 +54,24 @@ class VectorGeneratorCpp:
         cls_name = cls_name.lower()
         self.vectors[cls_name].append(vector)
 
+    def get_number_of_vectors(self, cls_name: str):
+        return len(self.vectors[cls_name])
+
     def save_to_cpp(self, filename='test_vectors.h'):
         t = Template(vector_template_str)
         template_kwargs = {
+            'B': gen_config.B,
+            'V': gen_config.V,
+            'F': gen_config.F,
+            'S': gen_config.S,
+            'n_neighbours': gen_config.n_neighbours,
             'cpp': self.format_cpp,
             'get_fields': self.get_fields,
             'is_array': self.is_array,
             'get_attr': self.get_attr,
             'get_cpp_type': self.get_cpp_type,
             'length': lambda x: x.size if isinstance(x, np.ndarray) else len(x),
+            'nvectors': self.get_number_of_vectors,
         }
 
         with open(filename, 'w') as f:

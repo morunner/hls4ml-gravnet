@@ -46,3 +46,6 @@ norecursedirs = [
     "hls4ml",
 ]
 python_files = "test_*.py generate_test_vectors.py"
+pythonpath = [
+    "quantized-gravnet",
+]

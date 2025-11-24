@@ -8,7 +8,7 @@ import tensorflow as tf
 @dataclass
 class TestVectorBase:
     name: str
-    expected_result: Union[np.ndarray, tf.Tensor]
+    expected_result: Union[np.ndarray, tf.Tensor, None]
 
     def __post_init__(self):
         """Automatically convert all tf.Tensors to np.ndarray"""
@@ -25,10 +25,16 @@ class GlobalExchangeTestVector(TestVectorBase):
 @dataclass
 class EuclideanSquaredTestVector(TestVectorBase):
     A: Union[np.ndarray, tf.Tensor]
-    B: Union[np.ndarray, tf.Tensor]
 
 
 @dataclass
-class CollectNeighboursTestVector(TestVectorBase):
+class EuclideanSquaredKnnTestVector(TestVectorBase):
+    A: Union[np.ndarray, tf.Tensor]
+    expected_ranked_distances: Union[np.ndarray, tf.Tensor]
+    expected_ranked_indices: Union[np.ndarray, tf.Tensor]
+
+
+@dataclass
+class GravnetCoreTestVector(TestVectorBase):
     coords: Union[np.ndarray, tf.Tensor]
     feats: Union[np.ndarray, tf.Tensor]

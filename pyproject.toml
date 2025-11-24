@@ -4,4 +4,45 @@ version = "0.1.0"
 description = "hls4ml GravNet"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "jinja2>=3.1.6",
+    "pre-commit>=4.5.0",
+    "pytest>=9.0.1",
+    "qkeras-v3==1.0.3",
+]
+
+[tool.uv]
+index-url = "https://test.pypi.org/simple/"
+extra-index-url = ["https://pypi.org/simple"]
+
+[tool.black]
+line-length = 125
+skip-string-normalization = true
+
+[tool.ruff]
+target-version = "py310"
+
+line-length = 125
+indent-width = 4
+exclude = [ "hls4ml/", "quantized-gravnet/" ]
+
+format.quote-style = "single"
+format.skip-magic-trailing-comma = false
+format.docstring-code-line-length = 125
+format.docstring-code-format = true
+lint.select = [ "E", "F", "F401", "I", "W" ]
+lint.ignore = [ "E741" ]
+lint.per-file-ignores = { "__init__.py" = [ "F401" ] }
+
+lint.fixable = [ "ALL" ]
+lint.unfixable = [  ]
+
+[tool.isort]
+profile = "black"
+line_length = 125
+
+[tool.pytest.ini_options]
+norecursedirs = [
+    "hls4ml",
+]
+python_files = "test_*.py generate_test_vectors.py"

@@ -42,7 +42,7 @@ class VectorGeneratorCpp:
             flat = value.flatten().tolist()
             if not flat:
                 return '{ 0 }'
-            inner = ', '.join(f'{x:.6f}f' for x in flat)
+            inner = ', '.join(f'{x:.9g}' for x in flat)
             return f'{{ {inner} }}'
         if isinstance(value, (list, tuple)):
             return f"{{ {', '.join(str(x) for x in value)} }}"
@@ -64,7 +64,7 @@ class VectorGeneratorCpp:
             'V': gen_config.V,
             'F': gen_config.F,
             'S': gen_config.S,
-            'n_neighbours': gen_config.n_neighbours,
+            'n_neighbors': gen_config.n_neighbors,
             'cpp': self.format_cpp,
             'get_fields': self.get_fields,
             'is_array': self.is_array,

@@ -8,7 +8,7 @@ struct gravnet_config {
     static const unsigned V = {{ V }};
     static const unsigned F = {{ F }};
     static const unsigned S = {{ S }};
-    static const unsigned n_neighbours = {{ n_neighbours }};
+    static const unsigned n_neighbors = {{ n_neighbors }};
 };
 {% for class_name, items in data.items() %}
 struct {{ class_name }} {

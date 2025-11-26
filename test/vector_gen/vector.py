@@ -23,18 +23,6 @@ class GlobalExchangeTestVector(TestVectorBase):
 
 
 @dataclass
-class EuclideanSquaredTestVector(TestVectorBase):
-    A: Union[np.ndarray, tf.Tensor]
-
-
-@dataclass
-class EuclideanSquaredKnnTestVector(TestVectorBase):
-    A: Union[np.ndarray, tf.Tensor]
-    expected_ranked_distances: Union[np.ndarray, tf.Tensor]
-    expected_ranked_indices: Union[np.ndarray, tf.Tensor]
-
-
-@dataclass
 class GravnetCoreTestVector(TestVectorBase):
     coords: Union[np.ndarray, tf.Tensor]
     feats: Union[np.ndarray, tf.Tensor]

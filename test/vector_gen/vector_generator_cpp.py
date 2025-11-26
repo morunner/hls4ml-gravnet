@@ -5,8 +5,8 @@ from dataclasses import fields
 import numpy as np
 from jinja2 import Template
 
+from test.vector_gen.gravnet_config import gravnet_config
 from test.vector_gen.vector import TestVectorBase
-from test.vector_gen.vector_gen_config import gen_config
 from test.vector_gen.vector_template import template_str as vector_template_str
 
 
@@ -60,11 +60,6 @@ class VectorGeneratorCpp:
     def save_to_cpp(self, filename='test_vectors.h'):
         t = Template(vector_template_str)
         template_kwargs = {
-            'B': gen_config.B,
-            'V': gen_config.V,
-            'F': gen_config.F,
-            'S': gen_config.S,
-            'n_neighbors': gen_config.n_neighbors,
             'cpp': self.format_cpp,
             'get_fields': self.get_fields,
             'is_array': self.is_array,
@@ -75,5 +70,5 @@ class VectorGeneratorCpp:
         }
 
         with open(filename, 'w') as f:
-            f.write(t.render(data=self.vectors, **template_kwargs))
+            f.write(t.render(data=self.vectors, gravnet_config=gravnet_config, **template_kwargs))
         print(f'[Gen] Generated vectors for classes: {list(self.vectors.keys())}')

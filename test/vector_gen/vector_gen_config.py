@@ -3,11 +3,6 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class GenerateTestVectorsConfig:
-    B: int = 1
-    V: int = 128
-    F: int = 4
-    S: int = 8
-    n_neighbors: int = 4
     vector_file_path: str = 'test/hls/include/test_vectors.h'
 
 

@@ -4,11 +4,14 @@ template_str = """
 #include <cstddef>
 
 struct gravnet_config {
-    static const unsigned B = {{ B }};
-    static const unsigned V = {{ V }};
-    static const unsigned F = {{ F }};
-    static const unsigned S = {{ S }};
-    static const unsigned n_neighbors = {{ n_neighbors }};
+    static const unsigned B = {{ gravnet_config.B }};
+    static const unsigned V = {{ gravnet_config.V }};
+    static const unsigned F = {{ gravnet_config.F }};
+    static const unsigned S = {{ gravnet_config.S }};
+    static const unsigned n_neighbors = {{ gravnet_config.n_neighbors }};
+    static const unsigned exp_table_size = {{ gravnet_config.exp_table_size }};
+    static const unsigned exp_table_size_nbits = {{ gravnet_config.exp_table_size_nbits }};
+    static const unsigned exp_table_indexing_shmt = {{ gravnet_config.exp_table_indexing_shmt }};
 };
 {% for class_name, items in data.items() %}
 struct {{ class_name }} {

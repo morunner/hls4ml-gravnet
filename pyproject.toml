@@ -37,10 +37,6 @@ lint.per-file-ignores = { "__init__.py" = [ "F401" ] }
 lint.fixable = [ "ALL" ]
 lint.unfixable = [  ]
 
-[tool.isort]
-profile = "black"
-line_length = 125
-
 [tool.pytest.ini_options]
 norecursedirs = [
     "hls4ml",

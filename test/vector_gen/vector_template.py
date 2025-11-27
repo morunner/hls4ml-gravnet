@@ -27,10 +27,10 @@ struct {{ class_name }} {
 };
 {%- endfor %}
 {% for class_name, items in data.items() %}
-    {%- for item in items %}
+    {%- for i, item in enumerate(items) %}
         {%- for field in get_fields(item) %}
             {%- if is_array(item, field) %}
-static float {{ class_name }}_data_{{ loop.index0 }}_{{ field }}[] = {{ cpp(get_attr(item, field)) }};
+static float {{ class_name }}_data_{{ i }}_{{ field }}[] = {{ cpp(get_attr(item, field)) }};
             {%- endif %}
         {%- endfor %}
     {%- endfor %}
@@ -38,12 +38,12 @@ static float {{ class_name }}_data_{{ loop.index0 }}_{{ field }}[] = {{ cpp(get_
 {% for class_name, items in data.items() %}
 static const int {{ class_name }}s_length = {{ nvectors(class_name) }};
 static {{ class_name }} {{ class_name }}s[] = {
-    {%- for item in items %}
+    {%- for i, item in enumerate(items) %}
     {
         "{{ item.name }}",
         {%- for field in get_fields(item) %}
             {%- if is_array(item, field) %}
-        {{ class_name }}_data_{{ loop.index0 }}_{{ field }},
+        {{ class_name }}_data_{{ i }}_{{ field }},
         {{ length(get_attr(item, field)) }},
             {%- else %}
         {{ get_attr(item, field) }},

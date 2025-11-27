@@ -60,6 +60,7 @@ class VectorGeneratorCpp:
     def save_to_cpp(self, filename='test_vectors.h'):
         t = Template(vector_template_str)
         template_kwargs = {
+            'enumerate': enumerate,
             'cpp': self.format_cpp,
             'get_fields': self.get_fields,
             'is_array': self.is_array,

@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.14)
 # Make gtest visible to clangd vscode extension
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(GravNetHLS CXX)
+project(Hls4mlGravNet CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 

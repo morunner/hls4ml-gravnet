@@ -1,6 +1,8 @@
 {
     "python.analysis.extraPaths": [
-        "./quantized-gravnet"
+        "./quantized-gravnet",
+        "./hls4ml_gravnet",
+        "./hls4ml"
     ],
     "python.testing.pytestArgs": [
         "test"

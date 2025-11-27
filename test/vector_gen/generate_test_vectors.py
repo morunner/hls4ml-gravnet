@@ -22,12 +22,27 @@ def test_gen_vector_global_exchange(recorder):
     x = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.F))
     gex = GlobalExchange()
     result = gex.call(x)
-    recorder.add(GlobalExchangeTestVector(name='global_exchange', x=x, expected_result=result))
+
+    x_np = x.numpy()
+    result_np = result.numpy()
+
+    for b in range(gravnet_config.B):
+        recorder.add(GlobalExchangeTestVector(name=f'global_exchange_{b}', x=x_np[b], expected_result=result_np[b]))
 
 
 def test_gen_vector_gravnet_core(recorder):
-    coords = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.S), mean=10)
-    feats = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.F), mean=10)
+    coords = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.S))
+    feats = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.F))
     gravnet_core = GravNetCore(gravnet_config.n_neighbors)
     result = gravnet_core.call(coords, feats)
-    recorder.add(GravnetCoreTestVector(name='collect_neighbors', coords=coords, feats=feats, expected_result=result))
+
+    coords_np = coords.numpy()
+    feats_np = feats.numpy()
+    result_np = result.numpy()
+
+    for b in range(gravnet_config.B):
+        recorder.add(
+            GravnetCoreTestVector(
+                name=f'collect_neighbors_{b}', coords=coords_np[b], feats=feats_np[b], expected_result=result_np[b]
+            )
+        )

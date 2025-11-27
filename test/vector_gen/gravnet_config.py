@@ -4,7 +4,7 @@ from math import ceil, log2
 
 @dataclass(frozen=True)
 class GravNetConfig:
-    B: int = 1
+    B: int = 4
     V: int = 128
     F: int = 4
     S: int = 8

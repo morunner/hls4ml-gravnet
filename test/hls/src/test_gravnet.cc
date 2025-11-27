@@ -1,6 +1,7 @@
 #include "ap_fixed.h"
 #include "ap_int.h"
-#include "gravnet.h"
+#include "nnet_global_exchange.h"
+#include "nnet_gravnet_core.h"
 #include "test_vectors.h"
 #include "gtest/gtest.h"
 #include <cstddef>
@@ -18,8 +19,8 @@ TEST(Hls4mlGravNetTest, global_exchange) {
         for (unsigned int i = 0; i < v.x_len; i++) {
             x[i] = v.x[i];
         }
-        result_t actual_result[gravnet_config::B * gravnet_config::V * 4 * gravnet_config::F];
-        global_exchange<x_t, result_t, mean_t, gravnet_config>(x, actual_result);
+        result_t actual_result[gravnet_config::V * 4 * gravnet_config::F];
+        nnet::global_exchange<x_t, result_t, mean_t, gravnet_config>(x, actual_result);
 
         ASSERT_EQ(v.expected_result_len, sizeof(actual_result) / sizeof(actual_result[0]));
 
@@ -50,9 +51,9 @@ TEST(Hls4mlGravNetTest, gravnet_core) {
             feats[i] = v.feats[i];
         }
 
-        output_t actual_result[gravnet_config::B * gravnet_config::V * 2 * gravnet_config::F];
-        gravnet_core<input_t, output_t, knn_dist_t, knn_idx_t, exp_t, weight_t, gravnet_config>(coords, feats,
-                                                                                                actual_result);
+        output_t actual_result[gravnet_config::V * 2 * gravnet_config::F];
+        nnet::gravnet_core<input_t, output_t, knn_dist_t, knn_idx_t, exp_t, weight_t, gravnet_config>(coords, feats,
+                                                                                                      actual_result);
 
         ASSERT_EQ(v.expected_result_len, sizeof(actual_result) / sizeof(actual_result[0]));
 

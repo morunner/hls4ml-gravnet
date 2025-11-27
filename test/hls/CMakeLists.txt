@@ -1,4 +1,4 @@
-set(HLS4ML_GRAVNET_DIR ${CMAKE_SOURCE_DIR}/hls-gravnet)
+set(HLS4ML_GRAVNET_DIR ${CMAKE_SOURCE_DIR}/hls4ml_gravnet/hls)
 set(HLS4ML_VIVADO_AP_TYPES_DIR ${CMAKE_SOURCE_DIR}/hls4ml/hls4ml/templates/vivado/ap_types)
 
 add_executable(gravnet_test_runner src/test_gravnet.cc)

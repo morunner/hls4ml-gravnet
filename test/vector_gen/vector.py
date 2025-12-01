@@ -18,11 +18,6 @@ class TestVectorBase:
 
 
 @dataclass
-class GlobalExchangeTestVector(TestVectorBase):
-    x: Union[np.ndarray, tf.Tensor]
-
-
-@dataclass
 class GravnetCoreTestVector(TestVectorBase):
     coords: Union[np.ndarray, tf.Tensor]
     feats: Union[np.ndarray, tf.Tensor]

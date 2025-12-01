@@ -11,7 +11,7 @@ struct gravnet_core_config {
     static const unsigned V = 128;
     static const unsigned S = 4;
     static const unsigned F = 8;
-    static const unsigned n_neighbors = 4;
+    static const unsigned n_neighbours = 4;
     static const unsigned exp_table_size = 32;
     static const unsigned exp_table_size_nbits = 5;
     static const unsigned exp_table_indexing_shmt = 4;
@@ -97,18 +97,18 @@ template <class dist_T, class idx_T> struct Node {
  *
  * @tparam dist_T The data type for the distance.
  * @tparam idx_T The data type for the node index.
- * @tparam CONFIG_T The configuration struct containing `n_neighbors`.
+ * @tparam CONFIG_T The configuration struct containing `n_neighbours`.
  * @param new_dist The distance of the new candidate neighbor.
  * @param new_index The index of the new candidate neighbor.
  * @param knns The array of current k-nearest neighbors to be updated.
  */
 template <class dist_T, class idx_T, typename CONFIG_T>
-void update_knn(dist_T new_dist, idx_T new_index, Node<dist_T, idx_T> knns[CONFIG_T::n_neighbors]) {
+void update_knn(dist_T new_dist, idx_T new_index, Node<dist_T, idx_T> knns[CONFIG_T::n_neighbours]) {
     Node<dist_T, idx_T> current_node;
     current_node.dist = new_dist;
     current_node.index = new_index;
 
-    for (unsigned int n = 0; n < CONFIG_T::n_neighbors; n++) {
+    for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
         if (current_node.dist < knns[n].dist) {
             Node<dist_T, idx_T> tmp = knns[n];
             knns[n] = current_node;
@@ -132,20 +132,24 @@ void update_knn(dist_T new_dist, idx_T new_index, Node<dist_T, idx_T> knns[CONFI
  * 5. Computes the maximum and mean of the weighted features for each node.
  * 6. Concatenates the max and mean aggregations to produce the output.
  *
- * @tparam input_T Data type for input coordinates and features.
+ * @note This function allocates a large array `knns` on the stack (size V * n_neighbours).
+ * Ensure your stack size is sufficient or convert to heap allocation for C++ simulation.
+ *
+ * @tparam coords_T Data type for input coordinates.
+ * @tparam feats_T Data type for input features.
  * @tparam output_T Data type for the output features.
  * @tparam knn_dist_T Data type for the k-NN distance calculations.
  * @tparam knn_idx_T Data type for the k-NN indices.
  * @tparam exp_T Data type for the exponent lookup table.
- * @tparam weight_T Data type for the weighted features.
- * @tparam CONFIG_T The configuration struct with layer parameters (V, F, S, n_neighbors, etc.).
+ * @tparam weighted_feature_T Data type for the feature * weight calculation.
+ * @tparam CONFIG_T The configuration struct with layer parameters (V, F, S, n_neighbours, etc.).
  * @param coords Input coordinates of shape (V, S), flattened.
  * @param feats Input features of shape (V, F), flattened.
  * @param res Output features of shape (V, 2*F), flattened.
  */
-template <class input_T, class output_T, class knn_dist_T, class knn_idx_T, class exp_T, class weighted_feature_T,
-          typename CONFIG_T>
-void gravnet_core(input_T coords[CONFIG_T::V * CONFIG_T::S], input_T feats[CONFIG_T::V * CONFIG_T::F],
+template <class coords_T, class feats_T, class output_T, class knn_dist_T, class knn_idx_T, class exp_T,
+          class weighted_feature_T, typename CONFIG_T>
+void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONFIG_T::V * CONFIG_T::F],
                   output_T res[CONFIG_T::V * 2 * CONFIG_T::F]) {
 #ifdef __HLS_SYN__
     bool initialized = false;
@@ -160,11 +164,11 @@ void gravnet_core(input_T coords[CONFIG_T::V * CONFIG_T::S], input_T feats[CONFI
         initialized = true;
     }
 
-    Node<knn_dist_T, knn_idx_T> knns[CONFIG_T::V * CONFIG_T::n_neighbors];
+    Node<knn_dist_T, knn_idx_T> knns[CONFIG_T::V * CONFIG_T::n_neighbours];
     output_T fmax[CONFIG_T::F];
     output_T fsum[CONFIG_T::F];
 
-    for (unsigned int v_n = 0; v_n < CONFIG_T::V * CONFIG_T::n_neighbors; v_n++) {
+    for (unsigned int v_n = 0; v_n < CONFIG_T::V * CONFIG_T::n_neighbours; v_n++) {
         knns[v_n].dist = 30000;
         knns[v_n].index = 0;
     }
@@ -176,18 +180,18 @@ void gravnet_core(input_T coords[CONFIG_T::V * CONFIG_T::S], input_T feats[CONFI
         }
 
         unsigned int row_offset_coords = i * CONFIG_T::S;
-        unsigned int knn_offset_i = i * CONFIG_T::n_neighbors;
+        unsigned int knn_offset_i = i * CONFIG_T::n_neighbours;
 
         // It is sufficient to iterate only over the upper part of the matrix here
         // since the euclidean squared distance matrix will be symmetric.
         for (unsigned int j = i + 1; j < CONFIG_T::V; j++) {
             unsigned int col_offset_coords = j * CONFIG_T::S;
-            unsigned int knn_offset_j = j * CONFIG_T::n_neighbors;
+            unsigned int knn_offset_j = j * CONFIG_T::n_neighbours;
 
             knn_dist_T dist_sq = 0;
 
             for (unsigned int s = 0; s < CONFIG_T::S; s++) {
-                input_T diff = coords[row_offset_coords + s] - coords[col_offset_coords + s];
+                coords_T diff = coords[row_offset_coords + s] - coords[col_offset_coords + s];
                 dist_sq += (knn_dist_T)(diff * diff);
             }
 
@@ -195,7 +199,7 @@ void gravnet_core(input_T coords[CONFIG_T::V * CONFIG_T::S], input_T feats[CONFI
             update_knn<knn_dist_T, knn_idx_T, CONFIG_T>(dist_sq, i, &knns[knn_offset_j]);
         }
 
-        for (unsigned int n = 0; n < CONFIG_T::n_neighbors; n++) {
+        for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
             knn_idx_T neighbor_idx = knns[knn_offset_i + n].index;
             knn_dist_T d = knns[knn_offset_i + n].dist;
             ap_uint<CONFIG_T::exp_table_size_nbits> idx = gravnet_idx_from_real_val<knn_dist_T, CONFIG_T>(d);
@@ -204,7 +208,7 @@ void gravnet_core(input_T coords[CONFIG_T::V * CONFIG_T::S], input_T feats[CONFI
             unsigned int neighbor_offset_feats = neighbor_idx * CONFIG_T::F;
 
             for (unsigned int f = 0; f < CONFIG_T::F; f++) {
-                input_T feat = feats[neighbor_offset_feats + f];
+                feats_T feat = feats[neighbor_offset_feats + f];
                 weighted_feature_T weighted = feat * w;
 
                 fsum[f] += weighted;
@@ -219,7 +223,7 @@ void gravnet_core(input_T coords[CONFIG_T::V * CONFIG_T::S], input_T feats[CONFI
 
         for (unsigned int f = 0; f < CONFIG_T::F; f++) {
             res[out_row_idx + f] = fmax[f];
-            res[out_row_idx + CONFIG_T::F + f] = fsum[f] / CONFIG_T::n_neighbors;
+            res[out_row_idx + CONFIG_T::F + f] = fsum[f] / CONFIG_T::n_neighbours;
         }
     }
 }

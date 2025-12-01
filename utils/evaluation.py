@@ -4,7 +4,10 @@ import json
 import os
 import pickle
 
+import numpy as np
 from keras import ops
+from matplotlib import pyplot as plt
+from sklearn.metrics import roc_auc_score, roc_curve
 
 
 def response_rmse(y_true, y_pred):
@@ -50,3 +53,60 @@ def load_run(train_dir):
         datapath = info.get('datapath')
 
     return model_cfg, weights_path, history, datapath
+
+
+def display_evaluation_results(test_energy_pred: np.ndarray, test_pid_pred: np.ndarray, D: np.ndarray, model_cfg: dict):
+    test_response_rmse = response_rmse(D['y_energy_test'], test_energy_pred)
+    test_auc = roc_auc_score(D['y_pid_test'], test_pid_pred)
+    fpr, tpr, thresholds = roc_curve(D['y_pid_test'], test_pid_pred)
+
+    print(f'Test Response RMSE: {test_response_rmse:.4f}')
+    print(f'Test PID AUC: {test_auc:.4f}')
+
+    plt.figure(figsize=(12, 5))
+
+    plt.subplot(1, 2, 1)
+    plt.plot(fpr, tpr)
+    plt.xlabel('Pion False Positive Rate')
+    plt.ylabel('Pion True Positive Rate')
+    plt.xlim(0.0, 1.0)
+    plt.ylim(0.0, 1.0)
+
+    plt.subplot(1, 2, 2)
+    plt.hist(
+        test_energy_pred.flatten() / D['y_energy_test'],
+        bins=50,
+        histtype='stepfilled',
+        alpha=0.7,
+        density=True,
+    )
+    plt.axvline(1.0, color='k', linestyle='--', lw=1, alpha=0.7)
+    plt.xlabel('Predicted / True Energy')
+    plt.ylabel('Density')
+    plt.xlim(0.0, 4.0)
+
+    spcr = ' ' * 5
+    notes = 'Trained on 2% of Garnet dataset \n(1 file, 10k events)'
+    descr = (
+        'QGravNet Evaluation \n\n'
+        + spcr
+        + f'AUC: {test_auc:.3f} \n'
+        + spcr
+        + f'Response RMS: {test_response_rmse:.3f}'
+        + '\n\n\nModel Config (changes from default):\n\n'
+        + ''.join([f'{spcr}{k}: {v}\n' for k, v in model_cfg.items()])
+        + '\n\nNotes: \n\n'
+        + notes
+    )
+    plt.text(
+        1.05,
+        1.0,
+        descr,
+        transform=plt.gca().transAxes,
+        fontsize=11,
+        verticalalignment='top',
+        horizontalalignment='left',
+    )
+
+    plt.tight_layout()
+    plt.show()

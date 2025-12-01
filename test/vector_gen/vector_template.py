@@ -8,7 +8,7 @@ struct gravnet_config {
     static const unsigned V = {{ gravnet_config.V }};
     static const unsigned F = {{ gravnet_config.F }};
     static const unsigned S = {{ gravnet_config.S }};
-    static const unsigned n_neighbors = {{ gravnet_config.n_neighbors }};
+    static const unsigned n_neighbours = {{ gravnet_config.n_neighbours }};
     static const unsigned exp_table_size = {{ gravnet_config.exp_table_size }};
     static const unsigned exp_table_size_nbits = {{ gravnet_config.exp_table_size_nbits }};
     static const unsigned exp_table_indexing_shmt = {{ gravnet_config.exp_table_indexing_shmt }};

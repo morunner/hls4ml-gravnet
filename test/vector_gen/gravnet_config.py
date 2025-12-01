@@ -8,7 +8,7 @@ class GravNetConfig:
     V: int = 128
     F: int = 4
     S: int = 8
-    n_neighbors: int = 4
+    n_neighbours: int = 4
     exp_table_scale_factor: int = 2
     exp_table_resolution: int = 16
     exp_table_size: int = field(init=False)

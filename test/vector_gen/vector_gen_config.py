@@ -8,7 +8,7 @@ class GenerateTestVectorsConfig:
 
 @dataclass(frozen=True)
 class QGravNetLayerConfig:
-    n_neighbors: int = 8
+    n_neighbours: int = 8
     n_dimensions: int = 8
     n_filters: int = 4
     n_propagate: int = 8

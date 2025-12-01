@@ -1,11 +1,18 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools>=61.0"]
+
 [project]
-name = "hls4ml-gravnet"
+name = "hls4ml_gravnet"
 version = "0.1.0"
 description = "hls4ml GravNet"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "ipykernel>=7.1.0",
     "jinja2>=3.1.6",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.7",
     "pre-commit>=4.5.0",
     "pytest>=9.0.1",
     "qkeras-v3==1.0.3",
@@ -45,3 +52,9 @@ python_files = "test_*.py generate_test_vectors.py"
 pythonpath = [
     "quantized-gravnet",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["utils*", "hls4ml_gravnet*"]
+exclude = ["tests*", "scripts*", "notebooks*", "data*", "hls4ml", "quantized_gravnet*", "quantized-gravnet*"]
+namespaces = false

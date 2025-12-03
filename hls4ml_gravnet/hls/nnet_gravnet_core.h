@@ -13,7 +13,6 @@ struct gravnet_core_config {
     static const unsigned F = 8;
     static const unsigned n_neighbours = 4;
     static const unsigned exp_table_size = 32;
-    static const unsigned exp_table_size_nbits = 5;
     static const unsigned exp_table_indexing_shmt = 4;
 };
 
@@ -29,12 +28,12 @@ struct gravnet_core_config {
  * @param x The input real value.
  * @return The calculated index for the exponent lookup table.
  */
-template <class input_T, typename CONFIG_T>
-inline ap_uint<CONFIG_T::exp_table_size_nbits> gravnet_idx_from_real_val(input_T x) {
+template <class input_T, class exp_table_idx_T, typename CONFIG_T>
+inline exp_table_idx_T gravnet_idx_from_real_val(input_T x) {
     if (x < 0)
         x = -x;
 
-    ap_uint<CONFIG_T::exp_table_size_nbits> max_idx = CONFIG_T::exp_table_size - 1;
+    exp_table_idx_T max_idx = CONFIG_T::exp_table_size - 1;
 
     ap_fixed<x.width + CONFIG_T::exp_table_indexing_shmt, x.iwidth + CONFIG_T::exp_table_indexing_shmt> idx =
         ((ap_fixed<x.width + CONFIG_T::exp_table_indexing_shmt, x.iwidth + CONFIG_T::exp_table_indexing_shmt>)x
@@ -43,7 +42,7 @@ inline ap_uint<CONFIG_T::exp_table_size_nbits> gravnet_idx_from_real_val(input_T
     if (idx > max_idx) {
         return max_idx;
     }
-    return (ap_uint<CONFIG_T::exp_table_size_nbits>)idx;
+    return (exp_table_idx_T)idx;
 }
 
 /**
@@ -109,6 +108,7 @@ void update_knn(dist_T new_dist, idx_T new_index, Node<dist_T, idx_T> knns[CONFI
     current_node.index = new_index;
 
     for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
+#pragma HLS UNROLL
         if (current_node.dist < knns[n].dist) {
             Node<dist_T, idx_T> tmp = knns[n];
             knns[n] = current_node;
@@ -147,8 +147,8 @@ void update_knn(dist_T new_dist, idx_T new_index, Node<dist_T, idx_T> knns[CONFI
  * @param feats Input features of shape (V, F), flattened.
  * @param res Output features of shape (V, 2*F), flattened.
  */
-template <class coords_T, class feats_T, class output_T, class knn_dist_T, class knn_idx_T, class exp_T,
-          class weighted_feature_T, typename CONFIG_T>
+template <class coords_T, class feats_T, class output_T, class knn_dist_T, class knn_idx_T, class exp_table_T,
+          class exp_table_idx_T, class weighted_feature_T, typename CONFIG_T>
 void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONFIG_T::V * CONFIG_T::F],
                   output_T res[CONFIG_T::V * 2 * CONFIG_T::F]) {
 #ifdef __HLS_SYN__
@@ -156,11 +156,11 @@ void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONF
     exp_table_T exp_table[CONFIG_T::exp_table_size];
 #else
     static bool initialized = false;
-    static exp_T exp_table[CONFIG_T::exp_table_size];
+    static exp_table_T exp_table[CONFIG_T::exp_table_size];
 #endif
 
     if (!initialized) {
-        gravnet_init_exp_table<exp_T, CONFIG_T>(exp_table);
+        gravnet_init_exp_table<exp_table_T, CONFIG_T>(exp_table);
         initialized = true;
     }
 
@@ -169,6 +169,7 @@ void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONF
     output_T fsum[CONFIG_T::F];
 
     for (unsigned int v_n = 0; v_n < CONFIG_T::V * CONFIG_T::n_neighbours; v_n++) {
+#pragma HLS UNROLL
         knns[v_n].dist = 30000;
         knns[v_n].index = 0;
     }
@@ -184,26 +185,28 @@ void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONF
 
         // It is sufficient to iterate only over the upper part of the matrix here
         // since the euclidean squared distance matrix will be symmetric.
-        for (unsigned int j = i + 1; j < CONFIG_T::V; j++) {
-            unsigned int col_offset_coords = j * CONFIG_T::S;
-            unsigned int knn_offset_j = j * CONFIG_T::n_neighbours;
+        for (unsigned int j = 0; j < CONFIG_T::V; j++) {
+            if (j > i) {
+                unsigned int col_offset_coords = j * CONFIG_T::S;
+                unsigned int knn_offset_j = j * CONFIG_T::n_neighbours;
 
-            knn_dist_T dist_sq = 0;
+                knn_dist_T dist_sq = 0;
 
-            for (unsigned int s = 0; s < CONFIG_T::S; s++) {
-                coords_T diff = coords[row_offset_coords + s] - coords[col_offset_coords + s];
-                dist_sq += (knn_dist_T)(diff * diff);
+                for (unsigned int s = 0; s < CONFIG_T::S; s++) {
+                    coords_T diff = coords[row_offset_coords + s] - coords[col_offset_coords + s];
+                    dist_sq += (knn_dist_T)(diff * diff);
+                }
+
+                update_knn<knn_dist_T, knn_idx_T, CONFIG_T>(dist_sq, j, &knns[knn_offset_i]);
+                update_knn<knn_dist_T, knn_idx_T, CONFIG_T>(dist_sq, i, &knns[knn_offset_j]);
             }
-
-            update_knn<knn_dist_T, knn_idx_T, CONFIG_T>(dist_sq, j, &knns[knn_offset_i]);
-            update_knn<knn_dist_T, knn_idx_T, CONFIG_T>(dist_sq, i, &knns[knn_offset_j]);
         }
 
         for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
             knn_idx_T neighbor_idx = knns[knn_offset_i + n].index;
             knn_dist_T d = knns[knn_offset_i + n].dist;
-            ap_uint<CONFIG_T::exp_table_size_nbits> idx = gravnet_idx_from_real_val<knn_dist_T, CONFIG_T>(d);
-            exp_T w = exp_table[idx];
+            exp_table_idx_T idx = gravnet_idx_from_real_val<knn_dist_T, exp_table_idx_T, CONFIG_T>(d);
+            exp_table_T w = exp_table[idx];
 
             unsigned int neighbor_offset_feats = neighbor_idx * CONFIG_T::F;
 

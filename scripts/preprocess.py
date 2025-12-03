@@ -13,12 +13,12 @@ from utils.data import (
     save_processed,
     split_dataset,
 )
-from utils.files import PROJECT_ROOT
+from utils.files import DATASET_PATH
 
 FETCH = True  # set True to download the Zenodo files
 N_FILES = 1
 
-DATASET_DIR = PROJECT_ROOT / 'data/dataset/toy_calo'
+DATASET_DIR = DATASET_PATH / 'toy_calo'
 RAW_DIR = os.path.join(DATASET_DIR, 'raw')
 
 OUTFILE = os.path.join(DATASET_DIR, 'toy_calo_processed.h5')

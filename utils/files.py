@@ -12,3 +12,8 @@ def get_project_root_dir(project_name: str) -> Path:
 
 
 PROJECT_ROOT = get_project_root_dir('hls4ml-gravnet')
+DATA_PATH = PROJECT_ROOT / 'data'
+DATASET_PATH = DATA_PATH / 'dataset'
+KERAS_MODEL_PATH = DATA_PATH / 'models'
+RESULTS_PATH = DATA_PATH / 'results'
+HLS4ML_OUT_PATH = DATA_PATH / 'hls4ml_out'

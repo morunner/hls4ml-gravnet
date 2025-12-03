@@ -18,4 +18,9 @@ class GravNetCoreHandler(KerasV3LayerHandler):
 
         n_neighbours = layer.get_config().get('n_neighbours')
         assert n_neighbours is not None
-        return {'n_vertices': output_shape[0], 'n_out_features': output_shape[1], 'n_neighbours': n_neighbours}
+        return {
+            'n_vertices': output_shape[0],
+            'n_out_features': output_shape[1],
+            'n_neighbours': n_neighbours,
+            'exponential_table': {'ScaleFactor': 2, 'Resolution': 16},
+        }

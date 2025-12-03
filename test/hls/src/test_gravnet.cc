@@ -12,7 +12,8 @@ TEST(Hls4mlGravNetTest, gravnet_core) {
     typedef ap_fixed<16, 8> output_t;
     typedef ap_fixed<16, 8> knn_dist_t;
     typedef unsigned int knn_idx_t;
-    typedef ap_ufixed<16, 0> exp_t;
+    typedef ap_ufixed<16, 0> exp_table_t;
+    typedef ap_uint<5> exp_table_idx_t;
     typedef ap_fixed<16, 8> weight_t;
 
     for (size_t i = 0; i < gravnet_core_test_vectors_length; i++) {
@@ -28,8 +29,8 @@ TEST(Hls4mlGravNetTest, gravnet_core) {
         }
 
         output_t actual_result[gravnet_config::V * 2 * gravnet_config::F];
-        nnet::gravnet_core<coords_t, feats_t, output_t, knn_dist_t, knn_idx_t, exp_t, weight_t, gravnet_config>(coords, feats,
-                                                                                                      actual_result);
+        nnet::gravnet_core<coords_t, feats_t, output_t, knn_dist_t, knn_idx_t, exp_table_t, exp_table_idx_t, weight_t,
+                           gravnet_config>(coords, feats, actual_result);
 
         ASSERT_EQ(v.expected_result_len, sizeof(actual_result) / sizeof(actual_result[0]));
 

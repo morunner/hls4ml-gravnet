@@ -9,10 +9,10 @@ from qgravnet import QGravNetFactory
 
 from utils.data import load_processed
 from utils.evaluation import response_rmse
-from utils.files import PROJECT_ROOT
+from utils.files import DATASET_PATH, RESULTS_PATH
 
-DATA_FILE = PROJECT_ROOT / 'data/dataset/toy_calo/toy_calo_processed.h5'
-TRAIN_DIR = PROJECT_ROOT / 'data/results/train1'
+DATA_FILE = DATASET_PATH / 'toy_calo/toy_calo_processed.h5'
+TRAIN_DIR = RESULTS_PATH / 'train1'
 
 model_cfg = {
     'n_blocks': 2,

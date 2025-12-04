@@ -3,11 +3,11 @@
 import argparse
 import os
 
+from hls4ml_extension.gravnet_core_parser import parse_gravnet_layer
 from train import model_cfg  # use the same params as when training the 'real' QGravNet
 
 import hls4ml
-from hls4ml_gravnet.hls4ml_extension.gravnet_core import GravNetCore
-from hls4ml_gravnet.hls4ml_extension.gravnet_core_handler import GravNetCoreHandler  # noqa: F401
+from hls4ml_gravnet.hls4ml_extension.gravnet_core import HGravNetCore
 from hls4ml_gravnet.hls4ml_extension.gravnet_core_template import GravNetCoreConfigTemplate, GravNetCoreFunctionTemplate
 from hls4ml_gravnet.keras_models.qgravnet_minimal import QGravNetMinimalFactory
 from utils.files import HLS4ML_OUT_PATH, PROJECT_ROOT
@@ -41,7 +41,8 @@ def main():
 
     keras_model.fit(x_rand, [y_rand[:, 0], y_rand[:, 1]])
 
-    hls4ml.model.layers.register_layer('GravNetCore', GravNetCore)
+    hls4ml.converters.register_keras_v2_layer_handler('GravNetCore', parse_gravnet_layer)
+    hls4ml.model.layers.register_layer('GravNetCore', HGravNetCore)
     backend = hls4ml.backends.get_backend('Vitis')
     backend.register_template(GravNetCoreConfigTemplate)
     backend.register_template(GravNetCoreFunctionTemplate)

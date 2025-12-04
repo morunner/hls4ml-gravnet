@@ -1,6 +1,5 @@
-from qgravnet.layers import GravNetCore
-
-import hls4ml
+from hls4ml.backends.template import FunctionCallTemplate, LayerConfigTemplate
+from hls4ml_gravnet.hls4ml_extension.gravnet_core import HGravNetCore
 
 gravnet_core_config_template = """
     struct config{index} : nnet::gravnet_core_config {{
@@ -19,27 +18,17 @@ gravnet_core_function_template = (
 gravnet_core_include_list = ['nnet_utils/nnet_gravnet_core.h']
 
 
-class GravNetCoreConfigTemplate(hls4ml.backends.template.LayerConfigTemplate):
+class GravNetCoreConfigTemplate(LayerConfigTemplate):
     def __init__(self):
-        super().__init__(GravNetCore)
+        super().__init__(HGravNetCore)
         self.template = gravnet_core_config_template
 
     def format(self, node):
         params = self._default_config_params(node)
-        input_shapes = node.get_attr('input_shape', None)
-        assert input_shapes is not None and len(input_shapes) == 2
 
-        coord_shape = input_shapes[0]
-        feat_shape = input_shapes[1]
-
-        assert len(coord_shape) == 2
-        assert len(feat_shape) == 2
-
-        assert coord_shape[0] == feat_shape[0], 'Coords and feats must contain the same number of vertices'
-
-        params['V'] = coord_shape[0]
-        params['S'] = coord_shape[1]
-        params['F'] = feat_shape[1]
+        params['V'] = node.get_attr('V')
+        params['S'] = node.get_attr('S')
+        params['F'] = node.get_attr('F')
 
         params['n_neighbours'] = node.get_attr('n_neighbours')
 
@@ -49,9 +38,9 @@ class GravNetCoreConfigTemplate(hls4ml.backends.template.LayerConfigTemplate):
         return self.template.format(**params)
 
 
-class GravNetCoreFunctionTemplate(hls4ml.backends.template.FunctionCallTemplate):
+class GravNetCoreFunctionTemplate(FunctionCallTemplate):
     def __init__(self):
-        super().__init__(GravNetCore, include_header=gravnet_core_include_list)
+        super().__init__(HGravNetCore, include_header=gravnet_core_include_list)
         self.template = gravnet_core_function_template
 
     def format(self, node):

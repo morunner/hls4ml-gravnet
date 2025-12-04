@@ -1,15 +1,18 @@
-# Adapted from: https://github.com/lorenzo-as/fast-gnn-clustering
-
 import json
 import os
 import pickle
 
-import keras
+import numpy as np
 from qgravnet import QGravNetFactory
 
 from utils.data import load_processed
 from utils.evaluation import response_rmse
 from utils.files import DATASET_PATH, RESULTS_PATH
+
+try:
+    import keras
+except ImportError:
+    from tensorflow import keras
 
 DATA_FILE = DATASET_PATH / 'toy_calo/toy_calo_processed.h5'
 TRAIN_DIR = RESULTS_PATH / 'train1'
@@ -33,9 +36,9 @@ model_cfg = {
 
 optimizer_cfg = {
     'optimizer': 'adam',
-    'loss': {'regression': 'mse', 'classification': 'binary_crossentropy'},
+    'loss': {'regression': response_rmse, 'classification': 'binary_crossentropy'},
     'loss_weights': {'regression': 0.9, 'classification': 0.1},
-    'metrics': {'regression': [response_rmse], 'classification': ['accuracy']},
+    'metrics': {'classification': ['accuracy']},
 }
 
 callbacks = [
@@ -74,7 +77,7 @@ if __name__ == '__main__':
         pickle.dump(model_cfg, f)
 
     with open(os.path.join(TRAIN_DIR, 'history.json'), 'w') as f:
-        json.dump(history.history, f)
+        json.dump(history.history, f, default=lambda o: o.item() if isinstance(o, np.generic) else o)
 
     with open(os.path.join(TRAIN_DIR, 'info.json'), 'w') as f:
         info = {

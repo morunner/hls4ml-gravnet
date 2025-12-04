@@ -13,9 +13,10 @@ dependencies = [
     "jinja2>=3.1.6",
     "jupyter>=1.1.1",
     "matplotlib>=3.10.7",
+    "pandas>=2.1.0",
     "pre-commit>=4.5.0",
     "pytest>=9.0.1",
-    "qkeras-v3==1.0.3",
+    "seaborn>=0.13.2",
 ]
 
 [tool.uv]
@@ -57,6 +58,7 @@ lint.unfixable = [  ]
 [tool.pytest.ini_options]
 norecursedirs = [
     "hls4ml",
+    "quantized-gravnet"
 ]
 python_files = "test_*.py generate_test_vectors.py"
 pythonpath = [
@@ -65,8 +67,8 @@ pythonpath = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["utils*", "hls4ml_gravnet*"]
-exclude = ["tests*", "scripts*", "notebooks*", "data*", "hls4ml", "quantized_gravnet*", "quantized-gravnet*"]
+include = ["utils*", "scripts*", "hls4ml_gravnet*"]
+exclude = ["tests*",  "notebooks*", "data*", "hls4ml", "quantized-gravnet*"]
 namespaces = false
 
 [dependency-groups]

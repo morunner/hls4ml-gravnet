@@ -3,6 +3,7 @@
 
 #include "ap_int.h"
 #include <cmath>
+#include <limits>
 #include <sys/types.h>
 
 namespace nnet {
@@ -64,7 +65,7 @@ void gravnet_init_exp_table(exp_table_T table_out[CONFIG_T::exp_table_size]) {
 
     for (unsigned i = 1; i < CONFIG_T::exp_table_size - 1; i++) {
 #pragma HLS UNROLL
-        float val = (float)((ap_fixed<32, 16>)(i + 1) >> CONFIG_T::exp_table_indexing_shmt);
+        float val = (float)((ap_fixed<32, 16>)(i + 0.5) >> CONFIG_T::exp_table_indexing_shmt);
         float res = std::exp(-10.0f * val);
         table_out[i] = (exp_table_T)res;
     }
@@ -170,13 +171,13 @@ void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONF
 
     for (unsigned int v_n = 0; v_n < CONFIG_T::V * CONFIG_T::n_neighbours; v_n++) {
 #pragma HLS UNROLL
-        knns[v_n].dist = 30000;
-        knns[v_n].index = 0;
+        knns[v_n].dist = 32767;
+        knns[v_n].index = 127;
     }
 
     for (unsigned int i = 0; i < CONFIG_T::V; i++) {
         for (unsigned int s = 0; s < CONFIG_T::F; s++) {
-            fmax[s] = -30000;
+            fmax[s] = -32768;
             fsum[s] = 0;
         }
 
@@ -205,6 +206,7 @@ void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONF
         for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
             knn_idx_T neighbor_idx = knns[knn_offset_i + n].index;
             knn_dist_T d = knns[knn_offset_i + n].dist;
+
             exp_table_idx_T idx = gravnet_idx_from_real_val<knn_dist_T, exp_table_idx_T, CONFIG_T>(d);
             exp_table_T w = exp_table[idx];
 
@@ -226,7 +228,7 @@ void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONF
 
         for (unsigned int f = 0; f < CONFIG_T::F; f++) {
             res[out_row_idx + f] = fmax[f];
-            res[out_row_idx + CONFIG_T::F + f] = fsum[f] / CONFIG_T::n_neighbours;
+            res[out_row_idx + CONFIG_T::F + f] = fsum[f] / (output_T)CONFIG_T::n_neighbours;
         }
     }
 }

@@ -3,7 +3,7 @@
 
 import keras
 from qgravnet.layers import GravNetCore
-from qkeras import QDense, quantized_bits
+from qkeras import QActivation, QDense, quantized_bits, quantized_sigmoid
 
 
 class QGravNetMinimalFactory:
@@ -31,7 +31,7 @@ class QGravNetMinimalFactory:
             activation='sigmoid',
             kernel_quantizer=quantizer,
             bias_quantizer=quantizer,
-            name='classification',
         )(x)
+        classes = QActivation(quantized_sigmoid(8, 0), name='classification')(classes)
 
         return keras.Model(inputs=inputs, outputs=[energies, classes], name='qgravnet_model_dual')

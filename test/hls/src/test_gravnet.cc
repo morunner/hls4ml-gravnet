@@ -6,15 +6,20 @@
 #include <cstddef>
 
 TEST(Hls4mlGravNetTest, gravnet_core) {
-    const double abs_error = 0.006;
-    typedef ap_fixed<16, 8> coords_t;
-    typedef ap_fixed<16, 8> feats_t;
-    typedef ap_fixed<16, 8> output_t;
-    typedef ap_fixed<16, 8> knn_dist_t;
-    typedef unsigned int knn_idx_t;
-    typedef ap_ufixed<16, 0> exp_table_t;
+    const double abs_error = 0.015;
+
+    // Ensure the right exp_table_idx_t, knn_idx_t bitwidths are set
+    assert(gravnet_config::exp_table_size == 32);
+    assert(gravnet_config::V == 128);
+
+    typedef ap_fixed<32, 16> coords_t;
+    typedef ap_fixed<32, 16> feats_t;
+    typedef ap_fixed<32, 16> output_t;
+    typedef ap_fixed<32, 16> knn_dist_t;
+    typedef ap_uint<7> knn_idx_t;
+    typedef ap_ufixed<16, 1> exp_table_t;
     typedef ap_uint<5> exp_table_idx_t;
-    typedef ap_fixed<16, 8> weight_t;
+    typedef ap_fixed<32, 16> weight_t;
 
     for (size_t i = 0; i < gravnet_core_test_vectors_length; i++) {
         gravnet_core_test_vector v = gravnet_core_test_vectors[i];

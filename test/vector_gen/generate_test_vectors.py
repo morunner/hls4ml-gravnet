@@ -18,10 +18,10 @@ def recorder():
 
 
 def test_gen_vector_gravnet_core(recorder):
-    coords = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.S))
-    feats = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.F))
+    coords = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.S), stddev=0.5)
+    feats = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.F), stddev=0.5)
     gravnet_core = GravNetCore(gravnet_config.n_neighbours)
-    result = gravnet_core.call(coords, feats)
+    result = gravnet_core.call([coords, feats])
 
     coords_np = coords.numpy()
     feats_np = feats.numpy()

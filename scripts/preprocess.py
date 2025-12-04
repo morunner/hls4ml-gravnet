@@ -1,5 +1,3 @@
-# Adapted from: https://github.com/lorenzo-as/fast-gnn-clustering
-
 import os
 
 import matplotlib.pyplot as plt

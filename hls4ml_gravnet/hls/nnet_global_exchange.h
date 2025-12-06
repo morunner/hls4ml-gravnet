@@ -6,6 +6,7 @@ namespace nnet {
 struct global_exchange_config {
     static const unsigned V = 128;
     static const unsigned F = 8;
+    static const unsigned V_nbits = 7;
 };
 
 /**
@@ -22,38 +23,37 @@ struct global_exchange_config {
  */
 template <class input_T, class output_T, class mean_T, typename CONFIG_T>
 void global_exchange(input_T x[CONFIG_T::V * CONFIG_T::F], output_T res[CONFIG_T::V * 4 * CONFIG_T::F]) {
+#pragma HLS ARRAY_PARTITION variable = x block factor = CONFIG_T ::V
+#pragma HLS ARRAY_PARTITION variable = res block factor = (4 * CONFIG_T::V)
+
+top:
     for (unsigned int f = 0; f < CONFIG_T::F; f++) {
+#pragma HLS PIPELINE II = 1
         input_T first_val = x[f];
 
-        mean_T current_mean = 0;
-        input_T current_min = first_val;
-        input_T current_max = first_val;
+        mean_T mean = first_val;
+        input_T min = first_val;
+        input_T max = first_val;
 
-        for (unsigned int v = 0; v < CONFIG_T::V; v++) {
-            unsigned int current_index = v * CONFIG_T::F + f;
-            input_T current_val = x[current_index];
+    update:
+        for (unsigned int v = 1; v < CONFIG_T::V; v++) {
+#pragma HLS UNROLL
+            input_T current_val = x[v * CONFIG_T::F + f];
 
-            current_mean += current_val;
-
-            if (current_val < current_min) {
-                current_min = current_val;
-            }
-            if (current_val > current_max) {
-                current_max = current_val;
-            }
+            mean += current_val;
+            min = (current_val < min) ? current_val : min;
+            max = (current_val > max) ? current_val : max;
         }
 
-        current_mean = current_mean / CONFIG_T::V;
+        mean = mean >> CONFIG_T::V_nbits;
 
+    assign:
         for (unsigned int v = 0; v < CONFIG_T::V; v++) {
-            unsigned int res_base_idx = v * (4 * CONFIG_T::F) + f;
-
-            res[res_base_idx] = (output_T)current_mean;
-            res[res_base_idx + CONFIG_T::F] = (output_T)current_min;
-            res[res_base_idx + 2 * CONFIG_T::F] = (output_T)current_max;
-
-            unsigned int x_idx = v * CONFIG_T::F + f;
-            res[res_base_idx + 3 * CONFIG_T::F] = (output_T)x[x_idx];
+#pragma HLS UNROLL
+            res[v * (4 * CONFIG_T::F) + f] = (output_T)mean;
+            res[v * (4 * CONFIG_T::F) + f + CONFIG_T::F] = (output_T)min;
+            res[v * (4 * CONFIG_T::F) + f + 2 * CONFIG_T::F] = (output_T)max;
+            res[v * (4 * CONFIG_T::F) + f + 3 * CONFIG_T::F] = (output_T)x[v * CONFIG_T::F + f];
         }
     }
 }

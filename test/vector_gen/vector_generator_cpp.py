@@ -5,6 +5,7 @@ from dataclasses import fields
 import numpy as np
 from jinja2 import Template
 
+from test.vector_gen.global_exchange_config import global_exchange_config
 from test.vector_gen.gravnet_config import gravnet_config
 from test.vector_gen.vector import TestVectorBase
 from test.vector_gen.vector_template import template_str as vector_template_str
@@ -45,7 +46,7 @@ class VectorGeneratorCpp:
             inner = ', '.join(f'{x:.9g}' for x in flat)
             return f'{{ {inner} }}'
         if isinstance(value, (list, tuple)):
-            return f"{{ {', '.join(str(x) for x in value)} }}"
+            return f'{{ {", ".join(str(x) for x in value)} }}'
         return str(value)
 
     def add(self, vector: TestVectorBase):
@@ -71,5 +72,12 @@ class VectorGeneratorCpp:
         }
 
         with open(filename, 'w') as f:
-            f.write(t.render(data=self.vectors, gravnet_config=gravnet_config, **template_kwargs))
+            f.write(
+                t.render(
+                    data=self.vectors,
+                    gravnet_config=gravnet_config,
+                    global_exchange_config=global_exchange_config,
+                    **template_kwargs,
+                )
+            )
         print(f'[Gen] Generated vectors for classes: {list(self.vectors.keys())}')

@@ -13,6 +13,13 @@ struct gravnet_config {
     static const unsigned exp_table_size_nbits = {{ gravnet_config.exp_table_size_nbits }};
     static const unsigned exp_table_indexing_shmt = {{ gravnet_config.exp_table_indexing_shmt }};
 };
+
+struct global_exchange_config {
+    static const unsigned V = {{ global_exchange_config.V }};
+    static const unsigned F = {{ global_exchange_config.F }};
+    static const unsigned V_nbits = {{ global_exchange_config.V_nbits }};
+};
+
 {% for class_name, items in data.items() %}
 struct {{ class_name }} {
     std::string name;

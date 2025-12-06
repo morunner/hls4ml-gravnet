@@ -19,8 +19,8 @@ TEST(Hls4mlGravNetTest, global_exchange) {
         for (unsigned int i = 0; i < v.x_len; i++) {
             x[i] = v.x[i];
         }
-        result_t actual_result[gravnet_config::V * 4 * gravnet_config::F];
-        nnet::global_exchange<x_t, result_t, mean_t, gravnet_config>(x, actual_result);
+        result_t actual_result[global_exchange_config::V * 4 * global_exchange_config::F];
+        nnet::global_exchange<x_t, result_t, mean_t, global_exchange_config>(x, actual_result);
 
         ASSERT_EQ(v.expected_result_len, sizeof(actual_result) / sizeof(actual_result[0]));
 

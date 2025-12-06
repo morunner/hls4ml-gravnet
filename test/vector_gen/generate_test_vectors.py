@@ -2,6 +2,7 @@ import pytest
 import tensorflow as tf
 from qgravnet.layers import GlobalExchange, GravNetCore
 
+from test.vector_gen.global_exchange_config import global_exchange_config
 from test.vector_gen.gravnet_config import gravnet_config
 from test.vector_gen.vector import (
     GlobalExchangeTestVector,
@@ -19,7 +20,7 @@ def recorder():
 
 
 def test_gen_vector_global_exchange(recorder):
-    x = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.F))
+    x = tf.random.normal(shape=(gravnet_config.B, global_exchange_config.V, global_exchange_config.F))
     gex = GlobalExchange()
     result = gex.call(x)
 

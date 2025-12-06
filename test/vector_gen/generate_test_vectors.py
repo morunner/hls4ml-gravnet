@@ -1,9 +1,10 @@
 import pytest
 import tensorflow as tf
-from qgravnet.layers import GravNetCore
+from qgravnet.layers import GlobalExchange, GravNetCore
 
 from test.vector_gen.gravnet_config import gravnet_config
 from test.vector_gen.vector import (
+    GlobalExchangeTestVector,
     GravnetCoreTestVector,
 )
 from test.vector_gen.vector_gen_config import gen_config
@@ -15,6 +16,18 @@ def recorder():
     rec = VectorGeneratorCpp()
     yield rec
     rec.save_to_cpp(gen_config.vector_file_path)
+
+
+def test_gen_vector_global_exchange(recorder):
+    x = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.F))
+    gex = GlobalExchange()
+    result = gex.call(x)
+
+    x_np = x.numpy()
+    result_np = result.numpy()
+
+    for b in range(gravnet_config.B):
+        recorder.add(GlobalExchangeTestVector(name=f'global_exchange_{b}', x=x_np[b], expected_result=result_np[b]))
 
 
 def test_gen_vector_gravnet_core(recorder):

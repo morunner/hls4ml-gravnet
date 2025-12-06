@@ -1,5 +1,5 @@
 import hls4ml
-from hls4ml_gravnet.layers.global_exchange import GlobalExchange
+from hls4ml_gravnet.hls4ml_extension.global_exchange import HGlobalExchange
 
 global_exchange_config_template = """
     struct config{index} : nnet::global_exchange_config {{
@@ -13,7 +13,7 @@ global_exchange_include_list = ['nnet_utils/nnet_global_exchange.h']
 
 class GlobalExchangeConfigTemplate(hls4ml.backends.template.LayerConfigTemplate):
     def __init__(self):
-        super().__init__(GlobalExchange)
+        super().__init__(HGlobalExchange)
         self.template = global_exchange_config_template
 
     def format(self, node):
@@ -27,7 +27,7 @@ class GlobalExchangeConfigTemplate(hls4ml.backends.template.LayerConfigTemplate)
 
 class GlobalExchangeFunctionTemplate(hls4ml.backends.template.FunctionCallTemplate):
     def __init__(self):
-        super().__init__(GlobalExchange, include_header=global_exchange_include_list)
+        super().__init__(HGlobalExchange, include_header=global_exchange_include_list)
         self.template = global_exchange_function_template
 
     def format(self, node):

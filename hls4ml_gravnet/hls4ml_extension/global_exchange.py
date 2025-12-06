@@ -2,7 +2,7 @@ from hls4ml.model.attributes import Attribute, TypeAttribute
 from hls4ml.model.layers import Layer
 
 
-class GlobalExchange(Layer):
+class HGlobalExchange(Layer):
     _expected_attributes = [Attribute('n_vertices'), Attribute('n_out_features'), TypeAttribute('mean', configurable=True)]
 
     def initialize(self):

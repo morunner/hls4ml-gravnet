@@ -3,8 +3,10 @@ import os
 import pickle
 
 import numpy as np
+from keras.optimizers import Adam
 from qgravnet import QGravNetFactory
 
+from utils.config import keras_model_cfg
 from utils.data import load_processed
 from utils.evaluation import response_rmse
 from utils.files import DATASET_PATH, RESULTS_PATH
@@ -14,28 +16,11 @@ try:
 except ImportError:
     from tensorflow import keras
 
-DATA_FILE = DATASET_PATH / 'toy_calo/toy_calo_processed.h5'
-TRAIN_DIR = RESULTS_PATH / 'train1'
-
-model_cfg = {
-    'n_blocks': 2,
-    'n_neighbours': 40,
-    'n_filters': 8,
-    'n_propagate': 8,
-    'n_postgn_dense_blocks': 2,
-    'dense_layer_dims': {
-        'input_dense': 8,
-        'post_gn': 16,
-        'postgn_block': 16,
-        'out0': 8,
-        'out1': 8,
-    },
-    'dense_kernel_quantizer': 'quantized_bits(8, 0, 1, alpha=1.0)',
-    'dense_bias_quantizer': 'quantized_bits(8, 0, 1, alpha=1.0)',
-}
+DATA_FILE = DATASET_PATH / 'toy_calo_y_train_scaled/toy_calo_processed.h5'
+TRAIN_DIR = RESULTS_PATH / 'train_new_quantization_cfg_y_train_scaled'
 
 optimizer_cfg = {
-    'optimizer': 'adam',
+    'optimizer': Adam(learning_rate=0.001),
     'loss': {'regression': response_rmse, 'classification': 'binary_crossentropy'},
     'loss_weights': {'regression': 0.9, 'classification': 0.1},
     'metrics': {'classification': ['accuracy']},
@@ -54,7 +39,7 @@ if __name__ == '__main__':
 
     D = load_processed(DATA_FILE)
 
-    model = QGravNetFactory(**model_cfg).create_keras_model(n_vertices=128, n_features=4)
+    model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=128, n_features=4)
     model.compile(**optimizer_cfg)
 
     history = model.fit(
@@ -74,7 +59,7 @@ if __name__ == '__main__':
     model.save_weights(os.path.join(TRAIN_DIR, 'model.weights.h5'))
 
     with open(os.path.join(TRAIN_DIR, 'model_cfg.pkl'), 'wb') as f:
-        pickle.dump(model_cfg, f)
+        pickle.dump(keras_model_cfg, f)
 
     with open(os.path.join(TRAIN_DIR, 'history.json'), 'w') as f:
         json.dump(history.history, f, default=lambda o: o.item() if isinstance(o, np.generic) else o)

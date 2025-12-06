@@ -194,7 +194,7 @@ void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONF
                 knn_dist_T dist_sq = 0;
 
                 for (unsigned int s = 0; s < CONFIG_T::S; s++) {
-                    coords_T diff = coords[row_offset_coords + s] - coords[col_offset_coords + s];
+                    knn_dist_T diff = coords[row_offset_coords + s] - coords[col_offset_coords + s];
                     dist_sq += (knn_dist_T)(diff * diff);
                 }
 

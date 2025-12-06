@@ -2,8 +2,8 @@
 # GravNetCore
 
 import keras
-from qgravnet.layers import GravNetCore
-from qkeras import QActivation, QDense, quantized_bits, quantized_sigmoid
+from qgravnet.layers import GlobalExchange, GravNetCore
+from qkeras import QActivation, QBatchNormalization, QDense, quantized_bits, quantized_relu, quantized_sigmoid
 
 
 class QGravNetMinimalFactory:
@@ -15,9 +15,17 @@ class QGravNetMinimalFactory:
 
         inputs = keras.Input(shape=(n_vertices, n_features))
 
-        coords = QDense(4, kernel_quantizer=quantizer, bias_quantizer=quantizer)(inputs)
-        feats = QDense(8, kernel_quantizer=quantizer, bias_quantizer=quantizer)(inputs)
-        x = GravNetCore(n_neighbours=self.n_neighbours, name='qgn_core')(coords, feats)
+        x = GlobalExchange(name='input_gex')(inputs)
+        coords = QDense(4, kernel_quantizer=quantizer, bias_quantizer=quantizer)(x)
+        feats = QDense(8, kernel_quantizer=quantizer, bias_quantizer=quantizer)(x)
+        x = GravNetCore(n_neighbours=self.n_neighbours, name='qgn_core')([coords, feats])
+        x = QBatchNormalization(
+            name='input_bn',
+            beta_quantizer=quantized_bits(8, 0, alpha=1.0),
+            gamma_quantizer=quantized_relu(8, 0),
+            mean_quantizer=quantized_bits(8, 0, alpha=1.0),
+            variance_quantizer=quantized_bits(8, 0, alpha=1.0),
+        )(x)
         x = keras.layers.GlobalAveragePooling1D(name='global_avg_pool')(x)
         energies = QDense(
             1,

@@ -103,8 +103,8 @@ def display_evaluation_results(test_energy_pred: np.ndarray, test_pid_pred: np.n
         + f'AUC: {test_auc:.3f} \n'
         + spcr
         + f'Response RMS: {test_response_rmse:.3f}'
-        + '\n\n\nModel Config (changes from default):\n\n'
-        + ''.join([f'{spcr}{k}: {v}\n' for k, v in model_cfg.items()])
+        # + '\n\n\nModel Config (changes from default):\n\n'
+        # + ''.join([f'{spcr}{k}: {v}\n' for k, v in model_cfg.items()])
         + '\n\nNotes: \n\n'
         + notes
     )

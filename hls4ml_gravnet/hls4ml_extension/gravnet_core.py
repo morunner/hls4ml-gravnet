@@ -11,7 +11,7 @@ class HGravNetCore(Layer):
         Attribute('S'),
         Attribute('F'),
         Attribute('n_neighbours'),
-        Attribute('exponential_table', value_type=dict, configurable=True),
+        Attribute('exponential_table', value_type=dict, default={'ScaleFactor': 2, 'Resolution': 16}, configurable=True),
         Attribute('exp_table_size', value_type=int),
         Attribute('exp_table_indexing_shmt', value_type=int),
         TypeAttribute('knn_idx'),
@@ -44,12 +44,12 @@ class HGravNetCore(Layer):
 
         if not log2(resolution).is_integer():
             raise ValueError('Exponential table resolution must be a power of two')
-        if not log2(scale_factor).is_integer():
-            raise ValueError('Scale factor must be a power of two')
+        # if not log2(scale_factor).is_integer():
+        #     raise ValueError('Scale factor must be a power of two')
 
         exp_table_size = scale_factor * resolution
-        exp_table_indexing_shmt = int(log2(resolution))
-        exp_table_size_nbits = int(log2(exp_table_size))
+        exp_table_indexing_shmt = int(ceil(log2(resolution)))
+        exp_table_size_nbits = int(ceil(log2(exp_table_size)))
 
         self.set_attr('exp_table_size', exp_table_size)
         self.set_attr('exp_table_indexing_shmt', exp_table_indexing_shmt)

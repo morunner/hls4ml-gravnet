@@ -40,3 +40,5 @@ def set_qgravnet_hls_config(hls_config: dict):
     for layer in hls_config['LayerName'].keys():
         if 'core' in layer:
             hls_config['LayerName'][layer]['ExponentialTable'] = {'ScaleFactor': 8, 'Resolution': 128}
+            hls_config['LayerName'][layer]['Precision']['coords_diff'] = 'ap_fixed<8,3>'
+            hls_config['LayerName'][layer]['Precision']['exp_table'] = 'ap_ufixed<8,1>'

@@ -14,6 +14,7 @@ class HGravNetCore(Layer):
         Attribute('exponential_table', value_type=dict, default={'ScaleFactor': 2, 'Resolution': 16}, configurable=True),
         Attribute('exp_table_size', value_type=int),
         Attribute('exp_table_indexing_shmt', value_type=int),
+        TypeAttribute('coords_diff', configurable=True),
         TypeAttribute('knn_idx'),
         TypeAttribute('knn_dist', configurable=True),
         TypeAttribute('exp_table', default=FixedPrecisionType(width=16, integer=1, signed=False), configurable=True),
@@ -57,5 +58,6 @@ class HGravNetCore(Layer):
 
         knn_idx_bits = ceil(log2(n_vertices + 1))
         self.set_attr('knn_idx_t', IntegerPrecisionType(width=knn_idx_bits, signed=False))
+        self._set_type_t('coords_diff')
         self._set_type_t('knn_dist')
         self._set_type_t('weighted_feature')

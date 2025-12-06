@@ -57,16 +57,15 @@ void gravnet_init_exp_table(exp_table_T table_out[CONFIG_T::exp_table_size]) {
  * * Now separated into two arrays: one for distances, one for indices.
  */
 template <class dist_T, class idx_T, typename CONFIG_T>
-void update_knn(dist_T new_dist, idx_T new_index,
-                dist_T knn_dists[CONFIG_T::n_neighbours],
+void update_knn(dist_T new_dist, idx_T new_index, dist_T knn_dists[CONFIG_T::n_neighbours],
                 idx_T knn_indices[CONFIG_T::n_neighbours]) {
+#pragma HLS INLINE
 
     // We keep track of the value currently being "pushed" into the array
     dist_T current_dist = new_dist;
     idx_T current_index = new_index;
 
     for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
-#pragma HLS UNROLL
         if (current_dist < knn_dists[n]) {
             // Swap Distance
             dist_T tmp_dist = knn_dists[n];
@@ -86,10 +85,14 @@ void update_knn(dist_T new_dist, idx_T new_index,
 /**
  * @brief Implements the core logic of GravNet.
  */
-template <class coords_T, class feats_T, class output_T, class knn_dist_T, class knn_idx_T, class exp_table_T,
-          class exp_table_idx_T, class weighted_feature_T, typename CONFIG_T>
+template <class coords_T, class feats_T, class output_T, class coords_diff_T, class knn_dist_T, class knn_idx_T,
+          class exp_table_T, class exp_table_idx_T, class weighted_feature_T, typename CONFIG_T>
 void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONFIG_T::V * CONFIG_T::F],
                   output_T res[CONFIG_T::V * 2 * CONFIG_T::F]) {
+#pragma HLS ARRAY_PARTITION variable = coords cyclic factor = CONFIG_T::S dim = 1
+#pragma HLS ARRAY_PARTITION variable = feats cyclic factor = CONFIG_T::F dim = 1
+#pragma HLS ARRAY_PARTITION variable = res cyclic factor = CONFIG_T::F dim = 1
+
 #ifdef __HLS_SYN__
     bool initialized = false;
     exp_table_T exp_table[CONFIG_T::exp_table_size];
@@ -98,77 +101,85 @@ void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONF
     static exp_table_T exp_table[CONFIG_T::exp_table_size];
 #endif
 
+#pragma HLS ARRAY_PARTITION variable = exp_table complete
+
     if (!initialized) {
         gravnet_init_exp_table<exp_table_T, CONFIG_T>(exp_table);
         initialized = true;
     }
 
-    knn_dist_T knn_dists[CONFIG_T::V * CONFIG_T::n_neighbours];
-    knn_idx_T knn_indices[CONFIG_T::V * CONFIG_T::n_neighbours];
-
-    output_T fmax[CONFIG_T::F];
-    output_T fsum[CONFIG_T::F];
-
-    // Initialize arrays
-    for (unsigned int v_n = 0; v_n < CONFIG_T::V * CONFIG_T::n_neighbours; v_n++) {
-#pragma HLS UNROLL
-        knn_dists[v_n] = 32767;
-        knn_indices[v_n] = 0;
-    }
-
+// Initialize arrays
+loop_dist_outer:
     for (unsigned int i = 0; i < CONFIG_T::V; i++) {
-        for (unsigned int s = 0; s < CONFIG_T::F; s++) {
-            fmax[s] = -32768;
-            fsum[s] = 0;
-        }
+        unsigned int knn_offset = i * CONFIG_T::n_neighbours;
 
-        unsigned int row_offset_coords = i * CONFIG_T::S;
-        unsigned int knn_offset_i = i * CONFIG_T::n_neighbours;
+        knn_dist_T local_dists[CONFIG_T::n_neighbours];
+        knn_idx_T local_indices[CONFIG_T::n_neighbours];
+#pragma HLS ARRAY_PARTITION variable = local_dists complete
+#pragma HLS ARRAY_PARTITION variable = local_indices complete
 
-        for (unsigned int j = 0; j < CONFIG_T::V; j++) {
-            if (j > i) {
-                unsigned int col_offset_coords = j * CONFIG_T::S;
-                unsigned int knn_offset_j = j * CONFIG_T::n_neighbours;
-
-                knn_dist_T dist_sq = 0;
-
-                for (unsigned int s = 0; s < CONFIG_T::S; s++) {
-                    knn_dist_T diff = coords[row_offset_coords + s] - coords[col_offset_coords + s];
-                    dist_sq += (knn_dist_T)(diff * diff);
-                }
-
-                // Pass pointers to the specific sections of the separated arrays
-                update_knn<knn_dist_T, knn_idx_T, CONFIG_T>(dist_sq, j, &knn_dists[knn_offset_i], &knn_indices[knn_offset_i]);
-                update_knn<knn_dist_T, knn_idx_T, CONFIG_T>(dist_sq, i, &knn_dists[knn_offset_j], &knn_indices[knn_offset_j]);
-            }
-        }
-
+    loop_init_knn_dist_idx:
         for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
-            knn_idx_T neighbor_idx = knn_indices[knn_offset_i + n];
-            knn_dist_T d = knn_dists[knn_offset_i + n];
+#pragma HLS UNROLL
+            local_dists[n] = 32767;
+            local_indices[n] = 0;
+        }
+
+    loop_dist_inner:
+        for (unsigned int j = 0; j < CONFIG_T::V; j++) {
+#pragma HLS PIPELINE II = 1
+            if (i == j)
+                continue; // no self-comparison
+            knn_dist_T dist_sq = 0;
+
+        loop_dist_sq:
+            for (unsigned int s = 0; s < CONFIG_T::S; s++) {
+#pragma HLS UNROLL
+                coords_diff_T diff = coords[i * CONFIG_T::S + s] - coords[j * CONFIG_T::S + s];
+                dist_sq += (knn_dist_T)(diff * diff);
+            }
+
+            update_knn<knn_dist_T, knn_idx_T, CONFIG_T>(dist_sq, j, local_dists, local_indices);
+        }
+
+        output_T fmax[CONFIG_T::F];
+        output_T fsum[CONFIG_T::F];
+#pragma HLS ARRAY_PARTITION variable = fmax complete
+#pragma HLS ARRAY_PARTITION variable = fsum complete
+
+        for (unsigned int f = 0; f < CONFIG_T::F; f++) {
+#pragma HLS UNROLL
+            fmax[f] = -32768;
+            fsum[f] = 0;
+        }
+
+    loop_agg_neighbors:
+        for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
+#pragma HLS UNROLL
+            knn_idx_T neighbour_idx = local_indices[n];
+            knn_dist_T d = local_dists[n];
 
             exp_table_idx_T idx = gravnet_idx_from_real_val<knn_dist_T, exp_table_idx_T, CONFIG_T>(d);
             exp_table_T w = exp_table[idx];
 
-            unsigned int neighbor_offset_feats = neighbor_idx * CONFIG_T::F;
-
+        loop_agg_feats:
             for (unsigned int f = 0; f < CONFIG_T::F; f++) {
-                feats_T feat = feats[neighbor_offset_feats + f];
+#pragma HLS UNROLL
+                feats_T feat = feats[neighbour_idx * CONFIG_T::F + f];
                 weighted_feature_T weighted = feat * w;
 
                 fsum[f] += weighted;
-
-                if (weighted > fmax[f]) {
+                if (weighted > fmax[f])
                     fmax[f] = weighted;
-                }
             }
         }
 
-        unsigned int out_row_idx = i * (2 * CONFIG_T::F);
-
+        unsigned int out_idx = i * (2 * CONFIG_T::F);
+    loop_res:
         for (unsigned int f = 0; f < CONFIG_T::F; f++) {
-            res[out_row_idx + f] = fmax[f];
-            res[out_row_idx + CONFIG_T::F + f] = fsum[f] / (output_T)CONFIG_T::n_neighbours;
+#pragma HLS UNROLL
+            res[out_idx + f] = fmax[f];
+            res[out_idx + CONFIG_T::F + f] = fsum[f] / (output_T)CONFIG_T::n_neighbours;
         }
     }
 }

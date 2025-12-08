@@ -42,10 +42,10 @@ TEST(Hls4mlGravNetTest, gravnet_core) {
     typedef ap_fixed<16, 8, AP_RND, AP_SAT> output_t;
     typedef ap_fixed<8, 4> coords_diff_t;
     typedef ap_fixed<32, 16> knn_dist_t;
-    typedef ap_uint<7> knn_idx_t;
-    typedef ap_ufixed<16, 1> exp_table_t;
+    typedef ap_int<8> knn_idx_t;
+    typedef ap_ufixed<8, 1> exp_table_t;
     typedef ap_uint<5> exp_table_idx_t;
-    typedef ap_fixed<16, 8> weight_t;
+    typedef ap_fixed<8, 3> weight_t;
 
     for (size_t i = 0; i < gravnet_core_test_vectors_length; i++) {
         gravnet_core_test_vector v = gravnet_core_test_vectors[i];

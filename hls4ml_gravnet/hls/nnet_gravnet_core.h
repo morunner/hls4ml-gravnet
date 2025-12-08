@@ -17,9 +17,6 @@ struct gravnet_core_config {
 
 // Utils
 
-/**
- * @brief Converts a real value to an index for the exponent lookup table.
- */
 template <class input_T, class exp_table_idx_T, typename CONFIG_T>
 inline exp_table_idx_T gravnet_idx_from_real_val(input_T x) {
     if (x < 0)
@@ -37,9 +34,6 @@ inline exp_table_idx_T gravnet_idx_from_real_val(input_T x) {
     return (exp_table_idx_T)idx;
 }
 
-/**
- * @brief Initializes the exponent lookup table.
- */
 template <class exp_table_T, typename CONFIG_T>
 void gravnet_init_exp_table(exp_table_T table_out[CONFIG_T::exp_table_size]) {
     table_out[0] = 1.0f;
@@ -56,18 +50,18 @@ void gravnet_init_exp_table(exp_table_T table_out[CONFIG_T::exp_table_size]) {
 template <int N, typename T> T gravnet_sum_tree(T data[N]) {
 #pragma HLS INLINE
 
-    T buffer[N];
+    T buffer[N / 2];
 #pragma HLS ARRAY_PARTITION variable = buffer complete
 
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N / 2; i++) {
 #pragma HLS UNROLL
-        buffer[i] = data[i];
+        buffer[i] = data[2 * i] + data[2 * i + 1];
     }
 
-    for (int step = 2; step <= N; step *= 2) {
+    for (int step = 2; step <= (N / 2); step *= 2) {
 #pragma HLS UNROLL
 
-        for (int i = 0; i < N; i += step) {
+        for (int i = 0; i < (N / 2); i += step) {
 #pragma HLS UNROLL
             buffer[i] = buffer[i] + buffer[i + (step / 2)];
         }
@@ -79,74 +73,38 @@ template <int N, typename T> T gravnet_sum_tree(T data[N]) {
 template <int N, typename T> T gravnet_max_tree(T data[N]) {
 #pragma HLS INLINE
 
-    T buffer[N];
+    T buffer[N / 2];
 #pragma HLS ARRAY_PARTITION variable = buffer complete
 
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < N / 2; i++) {
 #pragma HLS UNROLL
-        buffer[i] = data[i];
+        T left = data[2 * i];
+        T right = data[2 * i + 1];
+        buffer[i] = (left > right) ? left : right;
     }
 
-    for (int step = 2; step <= N; step *= 2) {
+    for (int step = 2; step <= (N / 2); step *= 2) {
 #pragma HLS UNROLL
 
-        for (int i = 0; i < N; i += step) {
+        for (int i = 0; i < (N / 2); i += step) {
 #pragma HLS UNROLL
-
             T left = buffer[i];
             T right = buffer[i + (step / 2)];
-
             buffer[i] = (left > right) ? left : right;
         }
     }
 
-    // The root (maximum value) ends up at index 0
     return buffer[0];
 }
 
-template <int N, typename dist_T, typename idx_T>
-void gravnet_min_tree(dist_T input_dists[N], dist_T &out_min_dist, idx_T &out_min_idx) {
-#pragma HLS INLINE
-
-    dist_T tree_dist[N];
-    idx_T tree_idx[N];
-#pragma HLS ARRAY_PARTITION variable = tree_dist complete
-#pragma HLS ARRAY_PARTITION variable = tree_idx complete
-
-    for (int i = 0; i < N; i++) {
-#pragma HLS UNROLL
-        tree_dist[i] = input_dists[i];
-        tree_idx[i] = i;
-    }
-
-    for (int step = 2; step <= N; step *= 2) {
-#pragma HLS UNROLL
-
-        for (int i = 0; i < N; i += step) {
-#pragma HLS UNROLL
-
-            int left = i;
-            int right = i + (step / 2);
-
-            if (tree_dist[right] < tree_dist[left]) {
-                tree_dist[left] = tree_dist[right];
-                tree_idx[left] = tree_idx[right];
-            }
-        }
-    }
-
-    // Root is at index 0
-    out_min_dist = tree_dist[0];
-    out_min_idx = tree_idx[0];
-}
-
 // GravNet Core Logic
+
 template <class coords_T, class coords_diff_T, class knn_dist_T, typename CONFIG_T>
 void calculate_squared_distances(coords_T coords[CONFIG_T::V * CONFIG_T::S], knn_dist_T squared_dists[CONFIG_T::V],
                                  unsigned int i) {
 loop_dist_sq:
     for (unsigned int j = 0; j < CONFIG_T::V; j++) {
-#pragma HLS PIPELINE II = 1
+#pragma HLS UNROLL
         if (i == j) {
             squared_dists[j] = 32767;
             continue; // no self-comparison
@@ -165,40 +123,148 @@ loop_dist_sq:
     }
 }
 
+template <typename dist_T, typename idx_T> void compare_and_swap(dist_T &d1, idx_T &i1, dist_T &d2, idx_T &i2) {
+#pragma HLS INLINE
+    if (d2 < d1) {
+        // Swap Distances
+        dist_T temp_d = d1;
+        d1 = d2;
+        d2 = temp_d;
+
+        // Swap Indices
+        idx_T temp_i = i1;
+        i1 = i2;
+        i2 = temp_i;
+    }
+}
+
+// Bitonic sort of 4 elements
+template <typename dist_T, typename idx_T> void bitonic_sort_4(dist_T d[4], idx_T i[4]) {
+#pragma HLS INLINE
+    // Create bitonic sequence of length 4
+    compare_and_swap(d[0], i[0], d[1], i[1]); // Left side (ascending)
+    compare_and_swap(d[3], i[3], d[2], i[2]); // Right side (descending)
+
+    // Merge bitonic sequences (sort)
+    // Stride 2
+    compare_and_swap(d[0], i[0], d[2], i[2]);
+    compare_and_swap(d[1], i[1], d[3], i[3]);
+    // Stride 1
+    compare_and_swap(d[0], i[0], d[1], i[1]);
+    compare_and_swap(d[2], i[2], d[3], i[3]);
+}
+
+template <typename dist_T, typename idx_T>
+void bitonic_merge(dist_T left_dist[4], idx_T left_idx[4], dist_T right_dist[4], idx_T right_idx[4], dist_T dist_res[4],
+                   idx_T idx_res[4]) {
+#pragma HLS INLINE
+    dist_T tmp_dist[4];
+    idx_T tmp_idx[4];
+#pragma HLS ARRAY_PARTITION variable = tmp_dist complete
+#pragma HLS ARRAY_PARTITION variable = tmp_idx complete
+
+    // Half-cleaner
+    //  This merges two bitonic sequences by comparing the corresponding values.
+    //  tmp_dist, tmp_idx are assigned the smaller values and form again a bitonic
+    //  sequence. Since we are only interested in the smallest values, we discard
+    //  the right side.
+    for (int k = 0; k < 4; k++) {
+#pragma HLS UNROLL
+        dist_T left_d = left_dist[k];
+        idx_T left_i = left_idx[k];
+
+        // Right side is in descending order
+        // to ensure bitonic sequence property (left and right are both sorted)
+        dist_T right_d = right_dist[3 - k];
+        idx_T right_i = right_idx[3 - k];
+
+        // Merge and discard larger (right) of the two
+        // bitonic sequences
+        if (right_d < left_d) {
+            tmp_dist[k] = right_d;
+            tmp_idx[k] = right_i;
+        } else {
+            tmp_dist[k] = left_d;
+            tmp_idx[k] = left_i;
+        }
+    }
+
+    // Now we need to sort the new bitonic sequence by comparing the corresponding elements
+    // of ascending and descending side of the sequence.
+    compare_and_swap(tmp_dist[0], tmp_idx[0], tmp_dist[2], tmp_idx[2]);
+    compare_and_swap(tmp_dist[1], tmp_idx[1], tmp_dist[3], tmp_idx[3]);
+    compare_and_swap(tmp_dist[0], tmp_idx[0], tmp_dist[1], tmp_idx[1]);
+    compare_and_swap(tmp_dist[2], tmp_idx[2], tmp_dist[3], tmp_idx[3]);
+
+    // Write result to Output
+    for (int k = 0; k < 4; k++) {
+#pragma HLS UNROLL
+        dist_res[k] = tmp_dist[k];
+        idx_res[k] = tmp_idx[k];
+    }
+}
+
 template <class knn_dist_T, class knn_idx_T, typename CONFIG_T>
 void select_knn(knn_dist_T squared_distances[CONFIG_T::V], knn_dist_T knn_dists[CONFIG_T::n_neighbours],
                 knn_idx_T knn_indices[CONFIG_T::n_neighbours]) {
-    bool is_selected[CONFIG_T::V];
-#pragma HLS ARRAY_PARTITION variable = is_selected complete
 
-init_mask:
-    for (int i = 0; i < CONFIG_T::V; i++) {
+    // Number of buffers for bitonic sort
+    // We use 4 elements per list
+    const int NUM_LISTS = CONFIG_T::V / 4;
+
+    knn_dist_T list_dist[NUM_LISTS][4];
+    knn_idx_T list_idx[NUM_LISTS][4];
+#pragma HLS ARRAY_PARTITION variable = list_dist complete
+#pragma HLS ARRAY_PARTITION variable = list_idx complete
+
+    // Create NUM_LISTS sorted lists of length 4
+    for (int i = 0; i < NUM_LISTS; i++) {
 #pragma HLS UNROLL
-        is_selected[i] = false;
+        for (int k = 0; k < 4; k++) {
+#pragma HLS UNROLL
+            list_dist[i][k] = squared_distances[i * 4 + k];
+            list_idx[i][k] = (knn_idx_T)(i * 4 + k);
+        }
+        bitonic_sort_4(list_dist[i], list_idx[i]);
     }
-loop_select_top_k:
-    for (unsigned int k = 0; k < CONFIG_T::n_neighbours; k++) {
-#pragma HLS PIPELINE II = 1
-        knn_dist_T masked_dists[CONFIG_T::V];
-#pragma HLS ARRAY_PARTITION variable = masked_dists complete
 
-    loop_mask_inputs:
-        for (int j = 0; j < CONFIG_T::V; j++) {
+    // Tree reduction
+    //  Now that we have NUM_LISTS sorted lists, we can merge them in a binary tree manner
+    for (int step = 1; step < NUM_LISTS; step *= 2) {
 #pragma HLS UNROLL
-            masked_dists[j] = is_selected[j] ? (knn_dist_T)32000 : squared_distances[j];
+
+        // Merge sorted lists in a binary tree-like manner
+        for (int i = 0; i < NUM_LISTS; i += (step * 2)) {
+#pragma HLS UNROLL
+
+            // Select consecutive 2 lists
+            int left_idx = i;
+            int right_idx = i + step;
+
+            knn_dist_T tmp_dist[4];
+            knn_idx_T tmp_idx[4];
+#pragma HLS ARRAY_PARTITION variable = tmp_dist complete
+#pragma HLS ARRAY_PARTITION variable = tmp_idx complete
+
+            // Each list contains 4 elements -> 8 elements per bitonic_merge pass. We keep the smallest 4 elements per iteration.
+            bitonic_merge(list_dist[left_idx], list_idx[left_idx], list_dist[right_idx], list_idx[right_idx], tmp_dist,
+                          tmp_idx);
+
+            // Only keep the left half of the bitonic sequence,
+            // since we care about the smallest values (= nearest neighbours)
+            for (int k = 0; k < 4; k++) {
+#pragma HLS UNROLL
+                list_dist[left_idx][k] = tmp_dist[k];
+                list_idx[left_idx][k] = tmp_idx[k];
+            }
         }
+    }
 
-        knn_dist_T min_dist;
-        knn_idx_T min_idx;
-
-        gravnet_min_tree<CONFIG_T::V, knn_dist_T, knn_idx_T>(masked_dists, min_dist, min_idx);
-
-        knn_dists[k] = min_dist;
-        knn_indices[k] = min_idx;
-
-        if (min_idx >= 0 && min_idx < CONFIG_T::V) {
-            is_selected[min_idx] = true;
-        }
+    // Even though the whole
+    for (int k = 0; k < CONFIG_T::n_neighbours; k++) {
+#pragma HLS UNROLL
+        knn_dists[k] = list_dist[0][k];
+        knn_indices[k] = list_idx[0][k];
     }
 }
 
@@ -209,7 +275,6 @@ void calculate_weighted_features(knn_dist_T knn_dists[CONFIG_T::n_neighbours], k
                                  weighted_feature_T weighted_feats[CONFIG_T::n_neighbours * CONFIG_T::F]) {
 loop_weighted_feats_outer:
     for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
-#pragma HLS PIPELINE II = 1
         knn_idx_T neighbour_idx = knn_indices[n];
         knn_dist_T d = knn_dists[n];
 
@@ -230,7 +295,6 @@ void reduce_features(weighted_feature_T weighted_feats[CONFIG_T::n_neighbours * 
                      output_T fmax[CONFIG_T::F]) {
 loop_reduce_features:
     for (unsigned int f = 0; f < CONFIG_T::F; f++) {
-#pragma HLS PIPELINE II = 1
         output_T column_for_sum[CONFIG_T::n_neighbours];
         output_T column_for_max[CONFIG_T::n_neighbours];
 #pragma HLS ARRAY_PARTITION variable = column_for_sum complete
@@ -277,6 +341,7 @@ void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONF
 // Initialize arrays
 loop_dist_outer:
     for (unsigned int i = 0; i < CONFIG_T::V; i++) {
+#pragma HLS PIPELINE
         unsigned int knn_offset = i * CONFIG_T::n_neighbours;
 
         // Squared distances

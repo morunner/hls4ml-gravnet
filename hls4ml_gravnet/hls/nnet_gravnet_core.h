@@ -159,7 +159,7 @@ loop_dist_outer:
             knn_idx_T neighbour_idx = local_indices[n];
             knn_dist_T d = local_dists[n];
 
-            exp_table_idx_T idx = gravnet_idx_from_real_val<knn_dist_T, exp_table_idx_T, CONFIG_T>(d);
+            unsigned int idx = gravnet_idx_from_real_val<knn_dist_T, exp_table_idx_T, CONFIG_T>(d);
             exp_table_T w = exp_table[idx];
 
         loop_agg_feats:

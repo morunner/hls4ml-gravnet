@@ -4,7 +4,7 @@ quantizer = quantized_bits(8, 0, 1, alpha=1.0)
 
 keras_model_cfg = {
     'n_blocks': 2,
-    'n_neighbours': 40,
+    'n_neighbours': 32,
     'n_filters': 8,
     'n_propagate': 8,
     'n_postgn_dense_blocks': 2,

@@ -17,8 +17,8 @@ struct gravnet_core_config {
     static const unsigned exp_table_indexing_shmt = 4;
 };
 
-template <class input_T, class exp_table_idx_T, typename CONFIG_T>
-inline exp_table_idx_T gravnet_idx_from_real_val(input_T x) {
+template <class input_T, class exp_table_idx_T, typename CONFIG_T> unsigned int gravnet_idx_from_real_val(input_T x) {
+#pragma HLS INLINE
     if (x < 0)
         x = -x;
 
@@ -29,9 +29,9 @@ inline exp_table_idx_T gravnet_idx_from_real_val(input_T x) {
          << CONFIG_T::exp_table_indexing_shmt);
 
     if (idx > max_idx)
-        return max_idx;
+        return (unsigned int)max_idx;
 
-    return (exp_table_idx_T)idx;
+    return (unsigned int)idx;
 }
 
 template <class exp_table_T, typename CONFIG_T>
@@ -95,20 +95,30 @@ template <int N, typename T> T gravnet_max_tree(T data[N]) {
 template <class coords_T, class coords_diff_T, class knn_dist_T, typename CONFIG_T>
 void calculate_squared_distances(coords_T coords[CONFIG_T::V * CONFIG_T::S], knn_dist_T squared_dists[CONFIG_T::V],
                                  unsigned int i) {
+    const unsigned int idx_i = i * CONFIG_T::S;
+
+    coords_T current_coords[CONFIG_T::S];
+#pragma HLS ARRAY_PARTITION variable = current_coords complete
+
+    for (unsigned int s = 0; s < CONFIG_T::S; s++) {
+#pragma HLS UNROLL
+        current_coords[s] = coords[idx_i + s];
+    }
+
     for (unsigned int j = 0; j < CONFIG_T::V; j++) {
 #pragma HLS UNROLL
-        if (i == j) {
-            squared_dists[j] = 32000;
-            continue;
-        }
         knn_dist_T dist_sq = 0;
+        const unsigned int idx_j = j * CONFIG_T::S;
+
         for (unsigned int s = 0; s < CONFIG_T::S; s++) {
 #pragma HLS UNROLL
-            coords_diff_T diff = coords[i * CONFIG_T::S + s] - coords[j * CONFIG_T::S + s];
+            coords_diff_T diff = coords[idx_i + s] - coords[idx_j + s];
             dist_sq += (knn_dist_T)(diff * diff);
         }
         squared_dists[j] = dist_sq;
     }
+
+    squared_dists[i] = 32000;
 }
 
 /**

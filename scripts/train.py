@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import pickle
@@ -16,8 +17,7 @@ try:
 except ImportError:
     from tensorflow import keras
 
-DATA_FILE = DATASET_PATH / 'toy_calo_y_train_scaled/toy_calo_processed.h5'
-TRAIN_DIR = RESULTS_PATH / 'train_new_quantization_cfg_y_train_scaled'
+DATA_FILE = DATASET_PATH / 'toy_calo/toy_calo_processed.h5'
 
 optimizer_cfg = {
     'optimizer': Adam(learning_rate=0.001),
@@ -34,8 +34,22 @@ callbacks = [
 n_epochs = 100
 batch_size = 32
 
-if __name__ == '__main__':
-    os.makedirs(TRAIN_DIR, exist_ok=False)
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog='TrainGravNet',
+        description='Train the GravNet model',
+    )
+    parser.add_argument('output_dir')
+
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+    train_dir = RESULTS_PATH / args.output_dir
+
+    os.makedirs(train_dir, exist_ok=False)
 
     D = load_processed(DATA_FILE)
 
@@ -56,15 +70,15 @@ if __name__ == '__main__':
         verbose=1,
     )
 
-    model.save_weights(os.path.join(TRAIN_DIR, 'model.weights.h5'))
+    model.save_weights(os.path.join(train_dir, 'model.weights.h5'))
 
-    with open(os.path.join(TRAIN_DIR, 'model_cfg.pkl'), 'wb') as f:
+    with open(os.path.join(train_dir, 'model_cfg.pkl'), 'wb') as f:
         pickle.dump(keras_model_cfg, f)
 
-    with open(os.path.join(TRAIN_DIR, 'history.json'), 'w') as f:
+    with open(os.path.join(train_dir, 'history.json'), 'w') as f:
         json.dump(history.history, f, default=lambda o: o.item() if isinstance(o, np.generic) else o)
 
-    with open(os.path.join(TRAIN_DIR, 'info.json'), 'w') as f:
+    with open(os.path.join(train_dir, 'info.json'), 'w') as f:
         info = {
             'datapath': str(DATA_FILE),
             'n_epochs': n_epochs,
@@ -73,3 +87,7 @@ if __name__ == '__main__':
         json.dump(info, f, indent=2)
 
     print('Training complete')
+
+
+if __name__ == '__main__':
+    main()

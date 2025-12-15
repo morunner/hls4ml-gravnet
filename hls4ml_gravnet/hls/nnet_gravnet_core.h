@@ -47,51 +47,6 @@ void gravnet_init_exp_table(exp_table_T table_out[CONFIG_T::exp_table_size]) {
     }
 }
 
-template <int N, typename T> T gravnet_sum_tree(T data[N]) {
-#pragma HLS INLINE
-    T buffer[N / 2];
-#pragma HLS ARRAY_PARTITION variable = buffer complete
-
-    for (int i = 0; i < N / 2; i++) {
-#pragma HLS UNROLL
-        buffer[i] = data[2 * i] + data[2 * i + 1];
-    }
-
-    for (int step = 2; step <= (N / 2); step *= 2) {
-#pragma HLS UNROLL
-        for (int i = 0; i < (N / 2); i += step) {
-#pragma HLS UNROLL
-            buffer[i] = buffer[i] + buffer[i + (step / 2)];
-        }
-    }
-    return buffer[0];
-}
-
-template <int N, typename T> T gravnet_max_tree(T data[N]) {
-#pragma HLS INLINE
-
-    T buffer[N / 2];
-#pragma HLS ARRAY_PARTITION variable = buffer complete
-
-    for (int i = 0; i < N / 2; i++) {
-#pragma HLS UNROLL
-        T left = data[2 * i];
-        T right = data[2 * i + 1];
-        buffer[i] = (left > right) ? left : right;
-    }
-
-    for (int step = 2; step <= (N / 2); step *= 2) {
-#pragma HLS UNROLL
-        for (int i = 0; i < (N / 2); i += step) {
-#pragma HLS UNROLL
-            T left = buffer[i];
-            T right = buffer[i + (step / 2)];
-            buffer[i] = (left > right) ? left : right;
-        }
-    }
-    return buffer[0];
-}
-
 template <class coords_T, class coords_diff_T, class knn_dist_T, typename CONFIG_T>
 void calculate_squared_distances(coords_T coords[CONFIG_T::V * CONFIG_T::S], knn_dist_T squared_dists[CONFIG_T::V],
                                  unsigned int i) {

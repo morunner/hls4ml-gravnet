@@ -59,5 +59,6 @@ class HGravNetCore(Layer):
         knn_idx_bits = ceil(log2(n_vertices + 1))
         self.set_attr('knn_idx_t', IntegerPrecisionType(width=knn_idx_bits, signed=False))
         self._set_type_t('coords_diff')
+        self._set_type_t('exp_table')
         self._set_type_t('knn_dist')
         self._set_type_t('weighted_feature')

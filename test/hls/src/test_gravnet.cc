@@ -31,7 +31,7 @@ TEST(Hls4mlGravNetTest, global_exchange) {
 }
 
 TEST(Hls4mlGravNetTest, gravnet_core) {
-    const double abs_error = 0.1;
+    const double abs_error = 0.01;
 
     // Ensure the right exp_table_idx_t, knn_idx_t bitwidths are set
     assert(gravnet_config::exp_table_size == 32);
@@ -41,7 +41,7 @@ TEST(Hls4mlGravNetTest, gravnet_core) {
     typedef ap_fixed<16, 8> feats_t;
     typedef ap_fixed<16, 8, AP_RND, AP_SAT> output_t;
     typedef ap_fixed<8, 4> coords_diff_t;
-    typedef ap_fixed<32, 16> knn_dist_t;
+    typedef ap_fixed<16, 10> knn_dist_t;
     typedef ap_int<8> knn_idx_t;
     typedef ap_ufixed<8, 1> exp_table_t;
     typedef ap_uint<5> exp_table_idx_t;

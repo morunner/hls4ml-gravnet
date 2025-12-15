@@ -32,8 +32,8 @@ def test_gen_vector_global_exchange(recorder):
 
 
 def test_gen_vector_gravnet_core(recorder):
-    coords = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.S), stddev=0.5)
-    feats = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.F), stddev=0.5)
+    coords = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.S), stddev=40)
+    feats = tf.random.normal(shape=(gravnet_config.B, gravnet_config.V, gravnet_config.F), stddev=40)
     gravnet_core = GravNetCore(gravnet_config.n_neighbours)
     result = gravnet_core.call([coords, feats])
 

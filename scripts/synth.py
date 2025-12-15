@@ -24,6 +24,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog='SynthesizeGravNet', description='Synthesize GravNet with hls4ml')
     parser.add_argument('-vhls', '--vitis_hls_path')
     parser.add_argument('-n', '--project_name')
+    parser.add_argument('-d', '--description', default='')
 
     return parser.parse_args()
 
@@ -32,7 +33,7 @@ def main():
     args = parse_args()
     os.environ['PATH'] = args.vitis_hls_path + 'bin:' + os.environ['PATH']
 
-    model_cfg, weights_path, _, datapath = load_run(RESULTS_PATH / 'train_new_quantization_cfg')
+    model_cfg, weights_path, _, datapath = load_run(RESULTS_PATH / args.project_name)
 
     D = load_processed(datapath)
 
@@ -42,7 +43,6 @@ def main():
 
     # Validate predictions
     test_energy_pred, test_pid_pred = keras_model.predict(D['X_hits_test'])
-    test_energy_pred *= 100
     test_response_rmse = response_rmse(D['y_energy_test'], test_energy_pred)
     test_auc = roc_auc_score(D['y_pid_test'], test_pid_pred)
     print(f'Response RMSE: {test_response_rmse:.3f}, AUC: {test_auc:.3f}')
@@ -60,12 +60,16 @@ def main():
     backend.register_source(PROJECT_ROOT / 'hls4ml_gravnet' / 'hls' / 'nnet_gravnet_bitonic_sort.h')
     backend.register_source(PROJECT_ROOT / 'hls4ml_gravnet' / 'hls' / 'nnet_global_exchange.h')
 
-    hls_config = hls4ml.utils.config_from_keras_model(model=keras_model, granularity='name', backend='Vitis')
+    hls_config = hls4ml.utils.config_from_keras_model(
+        model=keras_model, granularity='name', backend='Vitis', default_reuse_factor=32
+    )
     set_qgravnet_hls_config(hls_config)
+
+    proj_name = args.project_name if args.description == '' else f'{args.project_name}_{args.description}'
     hls_model = hls4ml.converters.convert_from_keras_model(
         model=keras_model,
         hls_config=hls_config,
-        output_dir=str(HLS4ML_OUT_PATH / args.project_name),
+        output_dir=str(HLS4ML_OUT_PATH / proj_name),
         project_name=args.project_name,
         backend='Vitis',
     )
@@ -75,6 +79,7 @@ def main():
         synth=True,
         cosim=True,
         validation=True,
+        vsynth=True,
     )
 
 

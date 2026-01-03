@@ -1,9 +1,12 @@
+from math import log2
+
 import hls4ml
 from hls4ml_gravnet.hls4ml_extension.global_exchange import HGlobalExchange
 
 global_exchange_config_template = """
     struct config{index} : nnet::global_exchange_config {{
         static const unsigned V = {V};
+        static const unsigned V_nbits = {V_nbits};
         static const unsigned F = {F};
     }};\n"""
 
@@ -20,8 +23,15 @@ class GlobalExchangeConfigTemplate(hls4ml.backends.template.LayerConfigTemplate)
         params = self._default_config_params(node)
         input_shape = node.get_input_variable().shape
         assert len(input_shape) == 2, 'GlobalExchange currently only supports 2D inputs'
-        params['V'] = input_shape[0]
-        params['F'] = input_shape[1]
+
+        V = input_shape[0]
+        F = input_shape[1]
+        if not log2(V).is_integer():
+            raise ValueError('Number of vertices must be a power of two')
+
+        params['V'] = V
+        params['V_nbits'] = log2(V)
+        params['F'] = F
         return self.template.format(**params)
 
 

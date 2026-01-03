@@ -54,8 +54,8 @@ def main():
 
     D = load_processed(DATA_FILE)
 
-    pretrained_model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=128, n_features=4)
-    pretrained_model.load_weights(RESULTS_PATH / args.input_dir / 'model.weights.hn5')
+    pretrained_model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=64, n_features=4)
+    pretrained_model.load_weights(RESULTS_PATH / args.input_dir / 'model.weights.h5')
 
     steps_per_epoch = ceil(len(D['X_hits_train']) / batch_size)
     end_step = steps_per_epoch * n_epochs

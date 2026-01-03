@@ -17,7 +17,7 @@ try:
 except ImportError:
     from tensorflow import keras
 
-DATA_FILE = DATASET_PATH / 'toy_calo/toy_calo_processed.h5'
+DATA_FILE = DATASET_PATH / 'toy_calo_64_vert/toy_calo_processed.h5'
 
 optimizer_cfg = {
     'optimizer': Adam(learning_rate=0.001),
@@ -53,7 +53,7 @@ def main():
 
     D = load_processed(DATA_FILE)
 
-    model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=128, n_features=4)
+    model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=64, n_features=4)
     model.compile(**optimizer_cfg)
 
     history = model.fit(

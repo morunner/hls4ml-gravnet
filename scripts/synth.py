@@ -5,26 +5,20 @@ from qgravnet.factory import QGravNetFactory
 from sklearn.metrics import roc_auc_score
 
 import hls4ml
-from hls4ml_gravnet.hls4ml_extension.global_exchange import HGlobalExchange
-from hls4ml_gravnet.hls4ml_extension.global_exchange_parser import parse_global_exchange
-from hls4ml_gravnet.hls4ml_extension.global_exchange_template import (
-    GlobalExchangeConfigTemplate,
-    GlobalExchangeFunctionTemplate,
-)
-from hls4ml_gravnet.hls4ml_extension.gravnet_core import HGravNetCore
-from hls4ml_gravnet.hls4ml_extension.gravnet_core_parser import parse_gravnet_layer
-from hls4ml_gravnet.hls4ml_extension.gravnet_core_template import GravNetCoreConfigTemplate, GravNetCoreFunctionTemplate
-from utils.config import set_qgravnet_hls_config
 from utils.data import load_processed
 from utils.evaluation import load_run, response_rmse
-from utils.files import HLS4ML_OUT_PATH, PROJECT_ROOT, RESULTS_PATH
+from utils.files import HLS4ML_OUT_PATH, RESULTS_PATH
+from utils.hls_config import get_build_opts, hls4ml_gravnet_register_extensions, set_converter_opts, set_qgravnet_hls_config
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog='SynthesizeGravNet', description='Synthesize GravNet with hls4ml')
     parser.add_argument('-vhls', '--vitis_hls_path')
+    parser.add_argument('-viv', '--vivado_path', default='')  # Optional
     parser.add_argument('-n', '--project_name')
     parser.add_argument('-d', '--description', default='')
+    parser.add_argument('-r', '--reuse', type=int)
+    parser.add_argument('-b', '--backend', default='Vitis')
 
     return parser.parse_args()
 
@@ -32,12 +26,13 @@ def parse_args() -> argparse.Namespace:
 def main():
     args = parse_args()
     os.environ['PATH'] = args.vitis_hls_path + 'bin:' + os.environ['PATH']
+    os.environ['PATH'] = args.vivado_path + 'bin:' + os.environ['PATH']
 
     model_cfg, weights_path, _, datapath = load_run(RESULTS_PATH / args.project_name)
 
     D = load_processed(datapath)
 
-    keras_model = QGravNetFactory(**model_cfg).create_keras_model(n_vertices=128, n_features=4)
+    keras_model = QGravNetFactory(**model_cfg).create_keras_model(n_vertices=64, n_features=4)
     keras_model.load_weights(weights_path)
     keras_model.compile()
 
@@ -47,40 +42,25 @@ def main():
     test_auc = roc_auc_score(D['y_pid_test'], test_pid_pred)
     print(f'Response RMSE: {test_response_rmse:.3f}, AUC: {test_auc:.3f}')
 
-    hls4ml.converters.register_keras_v2_layer_handler('GravNetCore', parse_gravnet_layer)
-    hls4ml.converters.register_keras_v2_layer_handler('GlobalExchange', parse_global_exchange)
-    hls4ml.model.layers.register_layer('GravNetCore', HGravNetCore)
-    hls4ml.model.layers.register_layer('GlobalExchange', HGlobalExchange)
-    backend = hls4ml.backends.get_backend('Vitis')
-    backend.register_template(GravNetCoreConfigTemplate)
-    backend.register_template(GravNetCoreFunctionTemplate)
-    backend.register_template(GlobalExchangeConfigTemplate)
-    backend.register_template(GlobalExchangeFunctionTemplate)
-    backend.register_source(PROJECT_ROOT / 'hls4ml_gravnet' / 'hls' / 'nnet_gravnet_core.h')
-    backend.register_source(PROJECT_ROOT / 'hls4ml_gravnet' / 'hls' / 'nnet_gravnet_bitonic_sort.h')
-    backend.register_source(PROJECT_ROOT / 'hls4ml_gravnet' / 'hls' / 'nnet_global_exchange.h')
+    hls4ml_gravnet_register_extensions(args.backend)
 
-    hls_config = hls4ml.utils.config_from_keras_model(
-        model=keras_model, granularity='name', backend='Vitis', default_reuse_factor=32
-    )
+    hls_config = hls4ml.utils.config_from_keras_model(model=keras_model, granularity='name', default_reuse_factor=args.reuse)
     set_qgravnet_hls_config(hls_config)
 
     proj_name = args.project_name if args.description == '' else f'{args.project_name}_{args.description}'
-    hls_model = hls4ml.converters.convert_from_keras_model(
-        model=keras_model,
-        hls_config=hls_config,
-        output_dir=str(HLS4ML_OUT_PATH / proj_name),
-        project_name=args.project_name,
-        backend='Vitis',
-    )
+    converter_opts = {
+        'model': keras_model,
+        'hls_config': hls_config,
+        'backend': args.backend,
+        'output_dir': str(HLS4ML_OUT_PATH / proj_name),
+        'project_name': args.project_name,
+    }
+    set_converter_opts(converter_opts, args.backend)
+    hls_model = hls4ml.converters.convert_from_keras_model(**converter_opts)
     hls_model.compile()
-    hls_model.build(
-        csim=True,
-        synth=True,
-        cosim=True,
-        validation=True,
-        vsynth=True,
-    )
+
+    build_opts = get_build_opts(args.backend)
+    hls_model.build(**build_opts)
 
 
 if __name__ == '__main__':

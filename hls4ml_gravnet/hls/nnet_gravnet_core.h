@@ -50,6 +50,7 @@ void gravnet_init_exp_table(exp_table_T table_out[CONFIG_T::exp_table_size]) {
 template <class coords_T, class coords_diff_T, class knn_dist_T, typename CONFIG_T>
 void calculate_squared_distances(coords_T coords[CONFIG_T::V * CONFIG_T::S], knn_dist_T squared_dists[CONFIG_T::V],
                                  unsigned int i) {
+#pragma HLS INLINE
 #pragma HLS ARRAY_PARTITION variable = coords complete
 
     const unsigned int idx_i = i * CONFIG_T::S;
@@ -84,6 +85,7 @@ void calculate_squared_distances(coords_T coords[CONFIG_T::V * CONFIG_T::S], knn
 template <class knn_dist_T, class knn_idx_T, typename CONFIG_T>
 void select_knn(knn_dist_T squared_distances[CONFIG_T::V], knn_dist_T knn_dists[CONFIG_T::n_neighbours],
                 knn_idx_T knn_indices[CONFIG_T::n_neighbours]) {
+#pragma HLS INLINE
     const int K = CONFIG_T::n_neighbours;
 
     // We create NUM_LISTS of size K, since we only need to keep
@@ -145,9 +147,7 @@ template <class knn_dist_T, class knn_idx_T, class exp_table_idx_T, class exp_ta
 void apply_weights_and_reduce(knn_dist_T knn_dists[CONFIG_T::n_neighbours], knn_idx_T knn_indices[CONFIG_T::n_neighbours],
                               exp_table_T exp_table[CONFIG_T::exp_table_size], feats_T feats[CONFIG_T::V * CONFIG_T::F],
                               output_T fsum[CONFIG_T::F], output_T fmax[CONFIG_T::F]) {
-#pragma HLS INLINE off
-#pragma HLS ARRAY_PARTITION variable = feats cyclic factor = CONFIG_T::F dim = 1
-
+#pragma HLS INLINE
     output_T acc_sum[CONFIG_T::F];
     output_T acc_max[CONFIG_T::F];
 #pragma HLS ARRAY_PARTITION variable = acc_sum complete
@@ -161,7 +161,7 @@ void apply_weights_and_reduce(knn_dist_T knn_dists[CONFIG_T::n_neighbours], knn_
 
 loop_weigh_and_reduce:
     for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
-#pragma HLS PIPELINE II = 1
+#pragma HLS UNROLL
 
         const unsigned int neighbour_idx = knn_indices[n];
 
@@ -192,6 +192,8 @@ template <class coords_T, class feats_T, class output_T, class coords_diff_T, cl
           class exp_table_T, class exp_table_idx_T, class weighted_feature_T, typename CONFIG_T>
 void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONFIG_T::V * CONFIG_T::F],
                   output_T res[CONFIG_T::V * 2 * CONFIG_T::F]) {
+#pragma HLS ARRAY_PARTITION variable = feats complete
+#pragma HLS ARRAY_PARTITION variable = coords complete
 #pragma HLS ARRAY_PARTITION variable = res cyclic factor = (2 * CONFIG_T::F)
 
 #ifdef __HLS_SYN__

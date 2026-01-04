@@ -50,7 +50,9 @@ def set_converter_opts(converter_opts: dict, backend: str = 'Vitis'):
 
 def get_build_opts(backend: str = 'Vitis') -> dict:
     build_opts = {
+        'reset': True,
         'csim': True,
+        'csynth': True,
         'synth': True,
         'cosim': True,
         # 'validation': True,
@@ -59,5 +61,7 @@ def get_build_opts(backend: str = 'Vitis') -> dict:
     if backend == 'CoyoteAccelerator':
         build_opts['timing_opt'] = True
         build_opts['bitfile'] = True
+    else:
+        build_opts['vsynth'] = True
 
     return build_opts

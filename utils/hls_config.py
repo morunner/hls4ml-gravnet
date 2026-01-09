@@ -30,7 +30,6 @@ def set_qgravnet_hls_config(hls_config: dict):
     hls_config['Model']['Precision'] = {'default': 'ap_fixed<16,8,AP_RND,AP_SAT>', 'maximum': 'ap_fixed<16,8,AP_RND,AP_SAT>'}
     hls_config['Model']['Strategy'] = 'Latency'
 
-    # Exponential table settings for gravnet core
     for layer in hls_config['LayerName'].keys():
         if 'core' in layer:
             hls_config['LayerName'][layer]['ExponentialTable'] = {'ScaleFactor': 2, 'Resolution': 16}
@@ -52,13 +51,12 @@ def get_build_opts(backend: str = 'Vitis') -> dict:
     build_opts = {
         'reset': True,
         'csim': True,
-        'csynth': True,
         'synth': True,
         'cosim': True,
-        # 'validation': True,
-        # 'vsynth': True,
+        'validation': True,
     }
     if backend == 'CoyoteAccelerator':
+        build_opts['csynth'] = True
         build_opts['timing_opt'] = True
         build_opts['bitfile'] = True
     else:

@@ -5,6 +5,7 @@ import os
 import pickle
 
 import numpy as np
+import seaborn as sns
 from matplotlib import pyplot as plt
 from sklearn.metrics import roc_auc_score, roc_curve
 
@@ -23,7 +24,7 @@ except ImportError:
     def response_rmse(y_true, y_pred):
         y_true = tf.reshape(y_true, (-1,))
         y_pred = tf.reshape(y_pred, (-1,))
-        response = tf.math.divide_no_nan(y_pred, y_true)
+        response = tf.math.divide_no_nan(y_pred, y_true / 100)
         return tf.sqrt(tf.reduce_mean(tf.square(response - 1.0)))
 
 
@@ -65,58 +66,62 @@ def load_run(train_dir):
     return model_cfg, weights_path, history, datapath
 
 
-def display_evaluation_results(test_energy_pred: np.ndarray, test_pid_pred: np.ndarray, D: np.ndarray, model_cfg: dict):
-    test_response_rmse = response_rmse(D['y_energy_test'], test_energy_pred)
-    test_auc = roc_auc_score(D['y_pid_test'], test_pid_pred)
-    fpr, tpr, thresholds = roc_curve(D['y_pid_test'], test_pid_pred)
+def compare_keras_hls_predictions(
+    test_energy_pred: np.ndarray,
+    test_pid_pred: np.ndarray,
+    test_energy_pred_hls: np.ndarray,
+    test_pid_pred_hls: np.ndarray,
+    test_energy_true: np.ndarray,
+    test_pid_true: np.ndarray,
+):
+    test_response_rmse = response_rmse(test_energy_true, test_energy_pred)
+    test_auc = roc_auc_score(test_pid_true, test_pid_pred)
+    fpr, tpr, _ = roc_curve(test_pid_true, test_pid_pred)
 
-    print(f'Test Response RMSE: {test_response_rmse:.4f}')
-    print(f'Test PID AUC: {test_auc:.4f}')
+    hls_response_rmse = response_rmse(test_energy_true, test_energy_pred_hls)
+    hls_auc = roc_auc_score(test_pid_true, test_pid_pred_hls)
+    hls_fpr, hls_tpr, _ = roc_curve(test_pid_true, test_pid_pred_hls)
 
-    plt.figure(figsize=(12, 5))
+    with sns.axes_style('darkgrid'):
+        plt.figure(figsize=(8, 4))
 
-    plt.subplot(1, 2, 1)
-    plt.plot(fpr, tpr)
-    plt.xlabel('Pion False Positive Rate')
-    plt.ylabel('Pion True Positive Rate')
-    plt.xlim(0.0, 1.0)
-    plt.ylim(0.0, 1.0)
+        plt.subplot(1, 2, 1)
+        plt.plot(1 - fpr, tpr, label=f'Keras (AUC: {test_auc:.3f})')
+        plt.plot(1 - hls_fpr, hls_tpr, label=f'HLS (AUC: {hls_auc:.3f})')
 
-    plt.subplot(1, 2, 2)
-    plt.hist(
-        test_energy_pred.flatten() / D['y_energy_test'],
-        bins=50,
-        histtype='stepfilled',
-        alpha=0.7,
-        density=True,
-    )
-    plt.axvline(1.0, color='k', linestyle='--', lw=1, alpha=0.7)
-    plt.xlabel('Predicted / True Energy')
-    plt.ylabel('Density')
-    plt.xlim(0.0, 4.0)
+        plt.xlabel('Pion False Positive Rate')
+        plt.ylabel('Pion True Positive Rate')
+        plt.xlim(0.7, 1.0)
+        plt.ylim(0.7, 1.0)
+        plt.title('Pion Identification ROC Curve')
+        plt.legend(loc='lower right')
 
-    spcr = ' ' * 5
-    notes = 'Trained on 2% of Garnet dataset \n(1 file, 10k events)'
-    descr = (
-        'QGravNet Evaluation \n\n'
-        + spcr
-        + f'AUC: {test_auc:.3f} \n'
-        + spcr
-        + f'Response RMS: {test_response_rmse:.3f}'
-        # + '\n\n\nModel Config (changes from default):\n\n'
-        # + ''.join([f'{spcr}{k}: {v}\n' for k, v in model_cfg.items()])
-        + '\n\nNotes: \n\n'
-        + notes
-    )
-    plt.text(
-        1.05,
-        1.0,
-        descr,
-        transform=plt.gca().transAxes,
-        fontsize=11,
-        verticalalignment='top',
-        horizontalalignment='left',
-    )
+        plt.subplot(1, 2, 2)
 
-    plt.tight_layout()
-    plt.show()
+        plt.hist(
+            test_energy_pred.flatten() * 100 / test_energy_true,
+            bins=50,
+            histtype='stepfilled',
+            alpha=0.5,
+            density=True,
+            label=f'Keras (RMSE: {test_response_rmse:.3f})',
+        )
+
+        plt.hist(
+            test_energy_pred_hls.flatten() * 100 / test_energy_true,
+            bins=50,
+            histtype='stepfilled',
+            alpha=0.5,
+            density=True,
+            label=f'HLS (RMSE: {hls_response_rmse:.3f})',
+        )
+
+        plt.axvline(1.0, color='k', linestyle='--', lw=1, alpha=0.7)
+        plt.xlabel('Predicted / True Energy')
+        plt.ylabel('Density')
+        plt.xlim(0.0, 2.0)
+        plt.title('Energy Response Distribution')
+        plt.legend(loc='upper right')
+
+        plt.tight_layout()
+        plt.show()

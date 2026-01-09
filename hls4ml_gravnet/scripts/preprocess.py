@@ -1,7 +1,6 @@
 import os
 
 import matplotlib.pyplot as plt
-
 from utils.data import (
     apply_hits_normalization,
     compute_hits_normalization,

@@ -8,7 +8,7 @@ from hls4ml_gravnet.hls4ml_extension.global_exchange_template import (
 from hls4ml_gravnet.hls4ml_extension.gravnet_core import HGravNetCore
 from hls4ml_gravnet.hls4ml_extension.gravnet_core_parser import parse_gravnet_layer
 from hls4ml_gravnet.hls4ml_extension.gravnet_core_template import GravNetCoreConfigTemplate, GravNetCoreFunctionTemplate
-from utils.files import PROJECT_ROOT
+from hls4ml_gravnet.utils.files import PROJECT_ROOT
 
 
 def hls4ml_gravnet_register_extensions(backend: str):

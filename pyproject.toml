@@ -68,7 +68,7 @@ pythonpath = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["utils*", "scripts*", "hls4ml_gravnet*"]
+include = ["hls4ml_gravnet*"]
 exclude = ["tests*",  "notebooks*", "data*", "hls4ml", "quantized-gravnet*"]
 namespaces = false
 

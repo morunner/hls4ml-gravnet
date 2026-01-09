@@ -3,12 +3,13 @@
 import argparse
 import os
 
-import hls4ml
-from hls4ml_gravnet.keras.qgravnet_minimal import QGravNetMinimalFactory
 from utils.config import hls4ml_gravnet_register_extensions, set_qgravnet_hls_config
 from utils.data import load_processed
 from utils.evaluation import load_run, response_rmse
 from utils.files import HLS4ML_OUT_PATH, RESULTS_PATH
+
+import hls4ml
+from hls4ml_gravnet.keras.qgravnet_minimal import QGravNetMinimalFactory
 
 
 def parse_args() -> argparse.Namespace:

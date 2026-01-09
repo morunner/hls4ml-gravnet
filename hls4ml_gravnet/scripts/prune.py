@@ -10,7 +10,6 @@ from keras.layers import Dense
 from keras.models import clone_model
 from qgravnet import QGravNetFactory
 from train import DATA_FILE, batch_size, callbacks, n_epochs, optimizer_cfg
-
 from utils.config import keras_model_cfg
 from utils.data import load_processed
 from utils.files import RESULTS_PATH

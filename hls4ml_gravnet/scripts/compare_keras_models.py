@@ -3,14 +3,11 @@ from keras.models import Model
 from qgravnet.factory import QGravNetFactory
 from sklearn.metrics import roc_auc_score
 from tabulate import tabulate
-
 from utils.data import load_processed
 from utils.evaluation import load_run, response_rmse
 from utils.files import RESULTS_PATH
 
-TRAIN_DIRS = [
-    'default',
-]
+TRAIN_DIRS = ['default', 'nn_8', 'nn_8_pruned']
 
 
 def add_model_predictions_to_df(keras_model: Model, D: dict, df: pd.DataFrame, name: str) -> pd.DataFrame:

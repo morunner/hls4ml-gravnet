@@ -6,7 +6,6 @@ import pickle
 import numpy as np
 from keras.optimizers import Adam
 from qgravnet import QGravNetFactory
-
 from utils.config import keras_model_cfg
 from utils.data import load_processed
 from utils.evaluation import response_rmse

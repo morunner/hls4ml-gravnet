@@ -3,12 +3,12 @@ import os
 
 from qgravnet.factory import QGravNetFactory
 from sklearn.metrics import roc_auc_score
-
-import hls4ml
 from utils.data import load_processed
 from utils.evaluation import load_run, response_rmse
 from utils.files import HLS4ML_OUT_PATH, RESULTS_PATH
 from utils.hls_config import get_build_opts, hls4ml_gravnet_register_extensions, set_converter_opts, set_qgravnet_hls_config
+
+import hls4ml
 
 
 def parse_args() -> argparse.Namespace:

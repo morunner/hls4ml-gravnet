@@ -4,7 +4,7 @@ from qgravnet.factory import QGravNetFactory
 from sklearn.metrics import roc_auc_score
 from tabulate import tabulate
 from utils.data import load_processed
-from utils.evaluation import load_run, response_rmse
+from utils.evaluation import load_run, response_rmse_log
 from utils.files import RESULTS_PATH
 
 TRAIN_DIRS = ['default', 'nn_8', 'nn_8_pruned']
@@ -13,7 +13,7 @@ TRAIN_DIRS = ['default', 'nn_8', 'nn_8_pruned']
 def add_model_predictions_to_df(keras_model: Model, D: dict, df: pd.DataFrame, name: str) -> pd.DataFrame:
     test_energy_pred, test_pid_pred = keras_model.predict(D['X_hits_test'])
 
-    test_response_rmse = response_rmse(D['y_energy_test'], test_energy_pred)
+    test_response_rmse = response_rmse_log(D['y_energy_test'], test_energy_pred)
     test_auc = roc_auc_score(D['y_pid_test'], test_pid_pred)
 
     row = pd.Series(

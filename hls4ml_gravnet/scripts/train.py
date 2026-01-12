@@ -6,22 +6,23 @@ import pickle
 import numpy as np
 from keras.optimizers import Adam
 from qgravnet import QGravNetFactory
-from utils.config import keras_model_cfg
-from utils.data import load_processed
-from utils.evaluation import response_rmse
-from utils.files import DATASET_PATH, RESULTS_PATH
+
+from hls4ml_gravnet.utils.config import keras_model_cfg
+from hls4ml_gravnet.utils.data import load_processed
+from hls4ml_gravnet.utils.evaluation import response_rmse_log
+from hls4ml_gravnet.utils.files import DATASET_PATH, RESULTS_PATH
 
 try:
     import keras
 except ImportError:
     from tensorflow import keras
 
-DATA_FILE = DATASET_PATH / 'toy_calo_64_vert/toy_calo_processed.h5'
+DATA_FILE = DATASET_PATH / 'toy_calo/toy_calo_processed.h5'
 
 optimizer_cfg = {
     'optimizer': Adam(learning_rate=0.001),
-    'loss': {'regression': response_rmse, 'classification': 'binary_crossentropy'},
-    'loss_weights': {'regression': 0.9, 'classification': 0.1},
+    'loss': {'regression': response_rmse_log, 'classification': 'binary_crossentropy'},
+    'loss_weights': {'regression': 0.8, 'classification': 0.2},
     'metrics': {'classification': ['accuracy']},
 }
 
@@ -51,14 +52,15 @@ def main():
     os.makedirs(train_dir, exist_ok=False)
 
     D = load_processed(DATA_FILE)
+    D['y_energy_train_log'] = np.log1p(D['y_energy_train'])
 
-    model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=64, n_features=4)
+    model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=128, n_features=4)
     model.compile(**optimizer_cfg)
 
     history = model.fit(
         x=D['X_hits_train'],
         y={
-            'regression': D['y_energy_train'],
+            'regression': D['y_energy_train_log'],
             'classification': D['y_pid_train'],
         },
         epochs=n_epochs,
@@ -70,6 +72,7 @@ def main():
     )
 
     model.save_weights(os.path.join(train_dir, 'model.weights.h5'))
+    model.save(os.path.join(train_dir, f'{args.output_dir}.keras'))
 
     with open(os.path.join(train_dir, 'model_cfg.pkl'), 'wb') as f:
         pickle.dump(keras_model_cfg, f)

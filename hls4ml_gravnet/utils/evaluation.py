@@ -12,7 +12,7 @@ from sklearn.metrics import roc_auc_score, roc_curve
 try:
     from keras import ops
 
-    def response_rmse(y_true, y_pred):
+    def response_rmse_log(y_true, y_pred):
         y_true = ops.reshape(y_true, (-1,))
         y_pred = ops.reshape(y_pred, (-1,))
         response = ops.divide_no_nan(y_pred, y_true)
@@ -24,8 +24,38 @@ except ImportError:
     def response_rmse(y_true, y_pred):
         y_true = tf.reshape(y_true, (-1,))
         y_pred = tf.reshape(y_pred, (-1,))
-        response = tf.math.divide_no_nan(y_pred, y_true / 100)
+        response = tf.math.divide_no_nan(y_pred, y_true)
         return tf.sqrt(tf.reduce_mean(tf.square(response - 1.0)))
+
+    def response_rmse_log(y_true_log, y_pred_log):
+        """
+        Calculates RMSE of the energy response ratio, assuming inputs are log-transformed.
+
+        y_true_log: log(Energy + 1)
+        y_pred_log: Model prediction (also in log space)
+        """
+        y_true_log = tf.reshape(y_true_log, (-1,))
+        y_pred_log = tf.reshape(y_pred_log, (-1,))
+
+        E_true = tf.math.expm1(y_true_log)
+        E_pred = tf.math.expm1(y_pred_log)
+
+        response = tf.math.divide_no_nan(E_pred, E_true)
+
+        return tf.sqrt(tf.reduce_mean(tf.square(response - 1.0)))
+
+
+def response_rmse_numpy(y_true, y_pred):
+    y_true = np.array(y_true).flatten()
+    y_pred = np.array(y_pred).flatten()
+
+    mask = y_true > 1e-4
+    y_true = y_true[mask]
+    y_pred = y_pred[mask]
+
+    response = y_pred / y_true
+
+    return np.sqrt(np.mean((response - 1.0) ** 2))
 
 
 def load_run(train_dir):
@@ -74,16 +104,20 @@ def compare_keras_hls_predictions(
     test_energy_true: np.ndarray,
     test_pid_true: np.ndarray,
 ):
-    test_response_rmse = response_rmse(test_energy_true, test_energy_pred)
+    keras_energy_lin = np.expm1(test_energy_pred.flatten())
+    hls_energy_lin = np.expm1(test_energy_pred_hls.flatten())
+
+    test_response_rmse = response_rmse_numpy(test_energy_true, keras_energy_lin)
+    hls_response_rmse = response_rmse_numpy(test_energy_true, hls_energy_lin)
+
     test_auc = roc_auc_score(test_pid_true, test_pid_pred)
     fpr, tpr, _ = roc_curve(test_pid_true, test_pid_pred)
 
-    hls_response_rmse = response_rmse(test_energy_true, test_energy_pred_hls)
     hls_auc = roc_auc_score(test_pid_true, test_pid_pred_hls)
     hls_fpr, hls_tpr, _ = roc_curve(test_pid_true, test_pid_pred_hls)
 
     with sns.axes_style('darkgrid'):
-        plt.figure(figsize=(8, 4))
+        plt.figure(figsize=(10, 5))
 
         plt.subplot(1, 2, 1)
         plt.plot(1 - fpr, tpr, label=f'Keras (AUC: {test_auc:.3f})')
@@ -98,29 +132,33 @@ def compare_keras_hls_predictions(
 
         plt.subplot(1, 2, 2)
 
+        response_keras = keras_energy_lin / test_energy_true
+        response_hls = hls_energy_lin / test_energy_true
+
+        plot_range = (0.0, 2.0)
+
         plt.hist(
-            test_energy_pred.flatten() * 100 / test_energy_true,
+            response_keras,
             bins=50,
-            histtype='stepfilled',
+            range=plot_range,
             alpha=0.5,
             density=True,
             label=f'Keras (RMSE: {test_response_rmse:.3f})',
         )
 
         plt.hist(
-            test_energy_pred_hls.flatten() * 100 / test_energy_true,
+            response_hls,
             bins=50,
-            histtype='stepfilled',
             alpha=0.5,
             density=True,
             label=f'HLS (RMSE: {hls_response_rmse:.3f})',
         )
 
         plt.axvline(1.0, color='k', linestyle='--', lw=1, alpha=0.7)
-        plt.xlabel('Predicted / True Energy')
+        plt.xlabel('Predicted Energy / True Energy')
         plt.ylabel('Density')
-        plt.xlim(0.0, 2.0)
-        plt.title('Energy Response Distribution')
+        plt.xlim(plot_range)
+        plt.title('Energy Response (Linear Space)')
         plt.legend(loc='upper right')
 
         plt.tight_layout()

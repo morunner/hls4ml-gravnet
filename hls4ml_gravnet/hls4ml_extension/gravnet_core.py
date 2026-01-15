@@ -20,6 +20,7 @@ class HGravNetCore(Layer):
         TypeAttribute('exp_table', default=FixedPrecisionType(width=16, integer=1, signed=False), configurable=True),
         TypeAttribute('exp_table_idx'),
         TypeAttribute('weighted_feature', configurable=True),
+        TypeAttribute('accum', configurable=True),
     ]
 
     def initialize(self):
@@ -62,3 +63,4 @@ class HGravNetCore(Layer):
         self._set_type_t('exp_table')
         self._set_type_t('knn_dist')
         self._set_type_t('weighted_feature')
+        self._set_type_t('accum')

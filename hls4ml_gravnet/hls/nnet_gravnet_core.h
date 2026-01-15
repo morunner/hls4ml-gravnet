@@ -143,13 +143,13 @@ loop_tree_depth:
 }
 
 template <class knn_dist_T, class knn_idx_T, class exp_table_idx_T, class exp_table_T, class feats_T,
-          class weighted_feature_T, class output_T, typename CONFIG_T>
+          class weighted_feature_T, class accum_T, class output_T, typename CONFIG_T>
 void apply_weights_and_reduce(knn_dist_T knn_dists[CONFIG_T::n_neighbours], knn_idx_T knn_indices[CONFIG_T::n_neighbours],
                               exp_table_T exp_table[CONFIG_T::exp_table_size], feats_T feats[CONFIG_T::V * CONFIG_T::F],
-                              output_T fsum[CONFIG_T::F], output_T fmax[CONFIG_T::F]) {
+                              accum_T fsum[CONFIG_T::F], output_T fmax[CONFIG_T::F]) {
 #pragma HLS INLINE
-    output_T acc_sum[CONFIG_T::F];
-    output_T acc_max[CONFIG_T::F];
+    accum_T acc_sum[CONFIG_T::F];
+    accum_T acc_max[CONFIG_T::F];
 #pragma HLS ARRAY_PARTITION variable = acc_sum complete
 #pragma HLS ARRAY_PARTITION variable = acc_max complete
 
@@ -188,8 +188,8 @@ loop_weigh_and_reduce:
     }
 }
 
-template <class coords_T, class feats_T, class output_T, class coords_diff_T, class knn_dist_T, class knn_idx_T,
-          class exp_table_T, class exp_table_idx_T, class weighted_feature_T, typename CONFIG_T>
+template <class coords_T, class feats_T, class output_T, class accum_T, class coords_diff_T, class knn_dist_T,
+          class knn_idx_T, class exp_table_T, class exp_table_idx_T, class weighted_feature_T, typename CONFIG_T>
 void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONFIG_T::V * CONFIG_T::F],
                   output_T res[CONFIG_T::V * 2 * CONFIG_T::F]) {
 #pragma HLS ARRAY_PARTITION variable = feats complete
@@ -226,11 +226,11 @@ loop_dist_outer:
         select_knn<knn_dist_T, knn_idx_T, CONFIG_T>(current_v_sq_dists, knn_dists, knn_indices);
 
         output_T fmax[CONFIG_T::F];
-        output_T fsum[CONFIG_T::F];
+        accum_T fsum[CONFIG_T::F];
 #pragma HLS ARRAY_PARTITION variable = fmax complete
 #pragma HLS ARRAY_PARTITION variable = fsum complete
-        apply_weights_and_reduce<knn_dist_T, knn_idx_T, exp_table_idx_T, exp_table_T, feats_T, weighted_feature_T, output_T,
-                                 CONFIG_T>(knn_dists, knn_indices, exp_table, feats, fsum, fmax);
+        apply_weights_and_reduce<knn_dist_T, knn_idx_T, exp_table_idx_T, exp_table_T, feats_T, weighted_feature_T, accum_T,
+                                 output_T, CONFIG_T>(knn_dists, knn_indices, exp_table, feats, fsum, fmax);
 
         unsigned int out_idx = i * (2 * CONFIG_T::F);
         for (unsigned int f = 0; f < CONFIG_T::F; f++) {

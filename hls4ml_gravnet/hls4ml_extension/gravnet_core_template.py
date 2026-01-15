@@ -12,7 +12,7 @@ gravnet_core_config_template = """
     }};\n"""
 
 gravnet_core_function_template = (
-    'nnet::gravnet_core<{input1_t}, {input2_t}, {output_t}, {coords_diff_t}, {knn_dist_t}, {knn_idx_t}, '
+    'nnet::gravnet_core<{input1_t}, {input2_t}, {output_t}, {accum_t}, {coords_diff_t}, {knn_dist_t}, {knn_idx_t}, '
     '{exp_table_t}, {exp_table_idx_t}, {weighted_feature_t}, {config}>({input1}, {input2}, {output});'
 )
 gravnet_core_include_list = ['nnet_utils/nnet_gravnet_core.h']
@@ -56,5 +56,6 @@ class GravNetCoreFunctionTemplate(FunctionCallTemplate):
         params['exp_table_t'] = node.get_attr('exp_table_t').name
         params['exp_table_idx_t'] = node.get_attr('exp_table_idx_t').name
         params['weighted_feature_t'] = node.get_attr('weighted_feature_t').name
+        params['accum_t'] = node.get_attr('accum_t').name
 
         return self.template.format(**params)

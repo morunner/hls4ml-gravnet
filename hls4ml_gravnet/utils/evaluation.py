@@ -92,8 +92,9 @@ def load_run(train_dir):
     with open(info_path, 'r') as f:
         info = json.load(f)
         datapath = info.get('datapath')
+        n_vertices = info.get('n_vertices')
 
-    return model_cfg, weights_path, history, datapath
+    return model_cfg, weights_path, history, datapath, n_vertices
 
 
 def compare_keras_hls_predictions(

@@ -54,9 +54,11 @@ def main():
     D = load_processed(DATA_FILE)
     D['y_energy_train_log'] = np.log1p(D['y_energy_train'])
 
-    model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=128, n_features=4)
+    N_VERTICES = 128
+    model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=N_VERTICES, n_features=4)
     model.compile(**optimizer_cfg)
 
+    D['X_hits_train'] = D['X_hits_train'][:, :N_VERTICES, :]
     history = model.fit(
         x=D['X_hits_train'],
         y={
@@ -83,6 +85,7 @@ def main():
     with open(os.path.join(train_dir, 'info.json'), 'w') as f:
         info = {
             'datapath': str(DATA_FILE),
+            'n_vertices': N_VERTICES,
             'n_epochs': n_epochs,
             'batch_size': batch_size,
         }

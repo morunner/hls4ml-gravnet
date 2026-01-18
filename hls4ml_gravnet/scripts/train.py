@@ -8,7 +8,7 @@ from keras.optimizers import Adam
 from qgravnet import QGravNetFactory
 
 from hls4ml_gravnet.utils.config import keras_model_cfg
-from hls4ml_gravnet.utils.data import load_processed
+from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices
 from hls4ml_gravnet.utils.evaluation import response_rmse_log
 from hls4ml_gravnet.utils.files import DATASET_PATH, RESULTS_PATH
 
@@ -41,6 +41,7 @@ def parse_args() -> argparse.Namespace:
         description='Train the GravNet model',
     )
     parser.add_argument('output_dir')
+    parser.add_argument('--shuffle-vertices', action='store_true', help='Shuffle vertices before training')
 
     return parser.parse_args()
 
@@ -58,6 +59,8 @@ def main():
     model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=N_VERTICES, n_features=4)
     model.compile(**optimizer_cfg)
 
+    if args.shuffle_vertices:
+        D['X_hits_train'] = shuffle_vertices(D['X_hits_train'], seed=0)
     D['X_hits_train'] = D['X_hits_train'][:, :N_VERTICES, :]
     history = model.fit(
         x=D['X_hits_train'],
@@ -88,6 +91,7 @@ def main():
             'n_vertices': N_VERTICES,
             'n_epochs': n_epochs,
             'batch_size': batch_size,
+            'shuffle_vertices': args.shuffle_vertices,
         }
         json.dump(info, f, indent=2)
 

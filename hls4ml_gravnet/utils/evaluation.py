@@ -93,8 +93,9 @@ def load_run(train_dir):
         info = json.load(f)
         datapath = info.get('datapath')
         n_vertices = info.get('n_vertices')
+        is_shuffled = info.get('is_shuffled', False)
 
-    return model_cfg, weights_path, history, datapath, n_vertices
+    return model_cfg, weights_path, history, datapath, n_vertices, is_shuffled
 
 
 def compare_keras_hls_predictions(

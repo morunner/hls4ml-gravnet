@@ -102,6 +102,18 @@ def split_dataset(X_hits, X_size, y_energy, y_pid, test_size=0.25):
     return train_test_split(X_hits, X_size, y_energy, y_pid, test_size=test_size, random_state=0)
 
 
+def shuffle_vertices(X_hits, seed=None):
+    """
+    Shuffle the order of vertices independently for each event.
+    """
+    rng = np.random.default_rng(seed)
+
+    N_events, N_hits, _ = X_hits.shape
+    perm = np.argsort(rng.random((N_events, N_hits)), axis=1)
+
+    return np.take_along_axis(X_hits, perm[..., None], axis=1)
+
+
 def save_processed(data: Dict[str, Any], filename: Union[str, Path]):
     """Save processed data to a single HDF5 file."""
     filename = Path(filename)

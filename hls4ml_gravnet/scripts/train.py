@@ -4,7 +4,7 @@ import os
 import pickle
 
 import numpy as np
-from keras.optimizers import Adam
+from keras.optimizers import AdamW
 from qgravnet import QGravNetFactory
 
 from hls4ml_gravnet.utils.config import keras_model_cfg
@@ -20,7 +20,7 @@ except ImportError:
 DATA_FILE = DATASET_PATH / 'toy_calo/toy_calo_processed.h5'
 
 optimizer_cfg = {
-    'optimizer': Adam(learning_rate=0.001),
+    'optimizer': AdamW(),
     'loss': {'regression': response_rmse_log, 'classification': 'binary_crossentropy'},
     'loss_weights': {'regression': 0.8, 'classification': 0.2},
     'metrics': {'classification': ['accuracy']},
@@ -41,6 +41,7 @@ def parse_args() -> argparse.Namespace:
         description='Train the GravNet model',
     )
     parser.add_argument('output_dir')
+    parser.add_argument('--num-vertices', type=int, default=128, help='Number of vertices to use')
     parser.add_argument('--shuffle-vertices', action='store_true', help='Shuffle vertices before training')
 
     return parser.parse_args()
@@ -55,13 +56,12 @@ def main():
     D = load_processed(DATA_FILE)
     D['y_energy_train_log'] = np.log1p(D['y_energy_train'])
 
-    N_VERTICES = 128
-    model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=N_VERTICES, n_features=4)
+    model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=args.num_vertices, n_features=4)
     model.compile(**optimizer_cfg)
 
     if args.shuffle_vertices:
         D['X_hits_train'] = shuffle_vertices(D['X_hits_train'], seed=0)
-    D['X_hits_train'] = D['X_hits_train'][:, :N_VERTICES, :]
+    D['X_hits_train'] = D['X_hits_train'][:, :args.num_vertices, :]
     history = model.fit(
         x=D['X_hits_train'],
         y={
@@ -88,7 +88,7 @@ def main():
     with open(os.path.join(train_dir, 'info.json'), 'w') as f:
         info = {
             'datapath': str(DATA_FILE),
-            'n_vertices': N_VERTICES,
+            'n_vertices': args.num_vertices,
             'n_epochs': n_epochs,
             'batch_size': batch_size,
             'shuffle_vertices': args.shuffle_vertices,

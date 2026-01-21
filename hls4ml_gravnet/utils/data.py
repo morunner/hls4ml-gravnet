@@ -103,15 +103,24 @@ def split_dataset(X_hits, X_size, y_energy, y_pid, test_size=0.25):
 
 
 def shuffle_vertices(X_hits, seed=None):
-    """
-    Shuffle the order of vertices independently for each event.
-    """
+    """ Shuffle the order of non-padded vertices independently for each event. """
     rng = np.random.default_rng(seed)
 
-    N_events, N_hits, _ = X_hits.shape
-    perm = np.argsort(rng.random((N_events, N_hits)), axis=1)
+    N_events, V_max, _ = X_hits.shape
+    valid = np.any(X_hits != 0, axis=-1)
 
-    return np.take_along_axis(X_hits, perm[..., None], axis=1)
+    keys = rng.random((N_events, V_max))
+
+    keys[~valid] = np.inf
+
+    order = np.argsort(keys, axis=1)
+
+    return np.take_along_axis(
+        X_hits,
+        order[:, :, None],
+        axis=1
+    )
+
 
 
 def save_processed(data: Dict[str, Any], filename: Union[str, Path]):

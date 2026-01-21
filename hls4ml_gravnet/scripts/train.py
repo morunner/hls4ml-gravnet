@@ -9,7 +9,7 @@ from qgravnet import QGravNetFactory
 
 from hls4ml_gravnet.utils.config import keras_model_cfg
 from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices
-from hls4ml_gravnet.utils.evaluation import response_rmse_log
+from hls4ml_gravnet.utils.evaluation import response_rmse_log, response_rmse
 from hls4ml_gravnet.utils.files import DATASET_PATH, RESULTS_PATH
 
 try:
@@ -20,18 +20,18 @@ except ImportError:
 DATA_FILE = DATASET_PATH / 'toy_calo/toy_calo_processed.h5'
 
 optimizer_cfg = {
-    'optimizer': AdamW(),
-    'loss': {'regression': response_rmse_log, 'classification': 'binary_crossentropy'},
+    'optimizer': AdamW(learning_rate=5e-4, weight_decay=1e-5),
+    'loss': {'regression': response_rmse, 'classification': 'binary_crossentropy'},
     'loss_weights': {'regression': 0.8, 'classification': 0.2},
     'metrics': {'classification': ['accuracy']},
 }
 
 callbacks = [
-    keras.callbacks.ReduceLROnPlateau(factor=0.2, patience=5, verbose=1),
-    keras.callbacks.EarlyStopping(patience=10, verbose=1, restore_best_weights=True),
+    keras.callbacks.ReduceLROnPlateau(factor=0.2, patience=5, verbose=1, min_delta=1e-3),
+    keras.callbacks.EarlyStopping(patience=25, verbose=1, restore_best_weights=True, min_delta=1e-4),
 ]
 
-n_epochs = 100
+n_epochs = 500
 batch_size = 32
 
 
@@ -53,8 +53,7 @@ def main():
 
     os.makedirs(train_dir, exist_ok=False)
 
-    D = load_processed(DATA_FILE)
-    D['y_energy_train_log'] = np.log1p(D['y_energy_train'])
+    energy_target = (D['y_energy_train'])
 
     model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=args.num_vertices, n_features=4)
     model.compile(**optimizer_cfg)
@@ -65,7 +64,7 @@ def main():
     history = model.fit(
         x=D['X_hits_train'],
         y={
-            'regression': D['y_energy_train_log'],
+            'regression': energy_target,
             'classification': D['y_pid_train'],
         },
         epochs=n_epochs,

@@ -9,7 +9,7 @@ from sklearn.metrics import roc_auc_score, roc_curve
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" # error only
 
 from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices
-from hls4ml_gravnet.utils.evaluation import load_run, response_rmse, response_rmse_log
+from hls4ml_gravnet.utils.evaluation import load_run, response_rmse
 from hls4ml_gravnet.utils.files import get_project_root_dir
 
 from qgravnet import QGravNetFactory
@@ -34,9 +34,8 @@ if __name__ == "__main__":
         D["X_hits_test"] = shuffle_vertices(D["X_hits_test"], seed=0)
     D["X_hits_test"] = D["X_hits_test"][:, :n_vertices, :]
     test_energy_pred, test_pid_pred = trained_model.predict(D["X_hits_test"])
-    test_energy_pred_exp = np.expm1(test_energy_pred)
 
-    test_response_rmse = response_rmse(D["y_energy_test"], test_energy_pred_exp)
+    test_response_rmse = response_rmse(D["y_energy_test"], test_energy_pred)
     test_auc = roc_auc_score(D["y_pid_test"], test_pid_pred)
     fpr, tpr, thresholds = roc_curve(D["y_pid_test"], test_pid_pred)
 
@@ -54,7 +53,7 @@ if __name__ == "__main__":
 
     plt.subplot(1, 2, 2)
     plt.hist(
-        test_energy_pred_exp.flatten() / D["y_energy_test"],
+        test_energy_pred.flatten() / D["y_energy_test"],
         bins=50,
         # histtype="stepfilled",
         alpha=0.7,
@@ -67,7 +66,7 @@ if __name__ == "__main__":
 
     spcr = " " * 5
     notes_dataset = "Trained on small Garnet dataset \n(1 file, 10k events)" if "mini" in datapath else "Trained on full Garnet dataset \n(50 files, à 10k events)"
-    notes = f"{notes_dataset}\n\n{n_vertices} vertices\n\nNo large skip connections\n\nAll <16,6> ReLus"
+    notes = f"{notes_dataset}\n\n{n_vertices} vertices\n\nNo large skip connections"
     descr = (
         "QGravNet Evaluation \n\n"
         + spcr

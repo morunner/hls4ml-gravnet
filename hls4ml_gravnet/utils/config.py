@@ -1,7 +1,7 @@
 from qkeras import quantized_bits, quantized_relu, quantized_sigmoid, quantized_tanh
 
 quantizer = quantized_bits(8, 0, 1, alpha=1.0)
-act_quantizer = "quantized_relu(16,6)"
+act_quantizer = "quantized_relu(12,4)"
 
 keras_model_cfg = {
     'n_blocks': 2,
@@ -30,8 +30,10 @@ keras_model_cfg = {
         'post_gn_activation': act_quantizer,
         'post_gn_out_activation': act_quantizer,
         'post_gn_gex_activation': act_quantizer,
-        'post_gn_relu': "quantized_relu(16, 6)",
+        'post_gn_relu': act_quantizer,
         'classification_activation': quantized_sigmoid(8),
+        'regression_kernel_quantizer' : quantized_bits(16, 8, 1, alpha=1.0),
+        'regression_bias_quantizer' : quantized_bits(16, 8, 1, alpha=1.0),
         'other_kernel_initializer': 'glorot_uniform',
     },
 }

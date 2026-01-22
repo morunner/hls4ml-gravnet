@@ -196,23 +196,13 @@ void gravnet_core(coords_T coords[CONFIG_T::V * CONFIG_T::S], feats_T feats[CONF
 #pragma HLS ARRAY_PARTITION variable = coords complete
 #pragma HLS ARRAY_PARTITION variable = res cyclic factor = (2 * CONFIG_T::F)
 
-#ifdef __HLS_SYN__
-    bool initialized = false;
-    exp_table_T exp_table[CONFIG_T::exp_table_size];
-#else
-    static bool initialized = false;
     static exp_table_T exp_table[CONFIG_T::exp_table_size];
-#endif
 #pragma HLS ARRAY_PARTITION variable = exp_table complete
-
-    if (!initialized) {
-        gravnet_init_exp_table<exp_table_T, CONFIG_T>(exp_table);
-        initialized = true;
-    }
+    gravnet_init_exp_table<exp_table_T, CONFIG_T>(exp_table);
 
 loop_dist_outer:
     for (unsigned int i = 0; i < CONFIG_T::V; i++) {
-#pragma HLS PIPELINE
+#pragma HLS PIPELINE rewind
         unsigned int knn_offset = i * CONFIG_T::n_neighbours;
 
         knn_dist_T current_v_sq_dists[CONFIG_T::V];

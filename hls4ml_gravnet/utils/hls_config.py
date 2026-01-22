@@ -1,38 +1,3 @@
-from pathlib import Path
-
-import hls4ml
-from hls4ml_gravnet.hls4ml_extension.global_exchange import HGlobalExchange
-from hls4ml_gravnet.hls4ml_extension.global_exchange_parser import parse_global_exchange
-from hls4ml_gravnet.hls4ml_extension.global_exchange_template import (
-    GlobalExchangeConfigTemplate,
-    GlobalExchangeFunctionTemplate,
-)
-from hls4ml_gravnet.hls4ml_extension.gravnet_core import HGravNetCore
-from hls4ml_gravnet.hls4ml_extension.gravnet_core_parser import parse_gravnet_layer
-from hls4ml_gravnet.hls4ml_extension.gravnet_core_template import (
-    GravNetCoreConfigTemplate,
-    GravNetCoreFunctionTemplate,
-)
-from hls4ml_gravnet.utils.files import PROJECT_ROOT
-
-
-def hls4ml_gravnet_register_extensions(backend: str, base_path: Path = None):
-    base_path = PROJECT_ROOT if base_path is None else base_path
-
-    hls4ml.converters.register_keras_v2_layer_handler('GravNetCore', parse_gravnet_layer)
-    hls4ml.converters.register_keras_v2_layer_handler('GlobalExchange', parse_global_exchange)
-    hls4ml.model.layers.register_layer('GravNetCore', HGravNetCore)
-    hls4ml.model.layers.register_layer('GlobalExchange', HGlobalExchange)
-    backend = hls4ml.backends.get_backend(backend)
-    backend.register_template(GravNetCoreConfigTemplate)
-    backend.register_template(GravNetCoreFunctionTemplate)
-    backend.register_template(GlobalExchangeConfigTemplate)
-    backend.register_template(GlobalExchangeFunctionTemplate)
-    backend.register_source(base_path / 'hls4ml_gravnet' / 'hls' / 'nnet_gravnet_core.h')
-    backend.register_source(base_path / 'hls4ml_gravnet' / 'hls' / 'nnet_gravnet_bitonic_sort.h')
-    backend.register_source(base_path / 'hls4ml_gravnet' / 'hls' / 'nnet_global_exchange.h')
-
-
 def set_qgravnet_hls_config(hls_config: dict):
     hls_config['Model']['Precision'] = {'default': 'ap_fixed<16,8,AP_RND,AP_SAT>', 'maximum': 'ap_fixed<16,8,AP_RND,AP_SAT>'}
     hls_config['Model']['Strategy'] = 'Latency'

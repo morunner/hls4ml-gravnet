@@ -41,7 +41,7 @@ void gravnet_init_exp_table(exp_table_T table_out[CONFIG_T::exp_table_size]) {
 
     for (unsigned i = 1; i < CONFIG_T::exp_table_size - 1; i++) {
 #pragma HLS UNROLL
-        float val = (float)((ap_fixed<32, 16>)(i + 0.5) >> CONFIG_T::exp_table_indexing_shmt);
+        float val = (float)((ap_fixed<32, 16>)(i) >> CONFIG_T::exp_table_indexing_shmt);
         float res = std::exp(-10.0f * val);
         table_out[i] = (exp_table_T)res;
     }

@@ -34,22 +34,23 @@ def hls4ml_gravnet_register_extensions(backend: str, base_path: Path = None):
 
 
 def set_qgravnet_hls_config(hls_config: dict):
-    hls_config['Model']['Precision'] = {
-        'default': 'ap_fixed<16,8,AP_RND,AP_SAT>',
-        'maximum': 'ap_fixed<16,8,AP_RND,AP_SAT>',
-    }
+    hls_config['Model']['Precision'] = {'default': 'ap_fixed<16,8,AP_RND,AP_SAT>', 'maximum': 'ap_fixed<16,8,AP_RND,AP_SAT>'}
     hls_config['Model']['Strategy'] = 'Latency'
 
     for layer in hls_config['LayerName'].keys():
         if 'core' in layer:
             hls_config['LayerName'][layer]['ExponentialTable'] = {
                 'ScaleFactor': 2,
-                'Resolution': 16,
+                'Resolution': 64,
             }
-            hls_config['LayerName'][layer]['Precision']['coords_diff'] = 'ap_fixed<8,3>'
-            hls_config['LayerName'][layer]['Precision']['exp_table'] = 'ap_ufixed<8,1>'
+            hls_config['LayerName'][layer]['Precision']['coords_diff'] = 'ap_fixed<8, 3, AP_RND, AP_SAT>'
+            hls_config['LayerName'][layer]['Precision']['exp_table'] = 'ap_ufixed<8, 1, AP_RND, AP_SAT>'
 
-    hls_config['LayerName']['global_avg_pool']['Precision']['accum'] = 'ap_fixed<22,10>'
+        if 'dense' in layer or 'transform' in layer:
+            hls_config['LayerName'][layer]['Precision']['weight'] = 'ap_fixed<8,1,AP_RND,AP_SAT>'
+            hls_config['LayerName'][layer]['Precision']['bias'] = 'ap_fixed<8,1,AP_RND,AP_SAT>'
+
+    hls_config['LayerName']['global_avg_pool']['Precision']['accum'] = 'ap_fixed<22,12>'
 
 
 def set_converter_opts(converter_opts: dict, backend: str = 'Vitis'):

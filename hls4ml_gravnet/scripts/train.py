@@ -9,7 +9,7 @@ from qgravnet import QGravNetFactory
 
 from hls4ml_gravnet.utils.config import keras_model_cfg
 from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices
-from hls4ml_gravnet.utils.evaluation import response_rmse_log, response_rmse
+from hls4ml_gravnet.utils.evaluation import response_rmse
 from hls4ml_gravnet.utils.files import DATASET_PATH, RESULTS_PATH
 
 try:
@@ -52,15 +52,15 @@ def main():
     train_dir = RESULTS_PATH / args.output_dir
 
     os.makedirs(train_dir, exist_ok=False)
-
-    energy_target = (D['y_energy_train'])
+    D = load_processed(DATA_FILE)
+    energy_target = D['y_energy_train']
 
     model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=args.num_vertices, n_features=4)
     model.compile(**optimizer_cfg)
 
     if args.shuffle_vertices:
         D['X_hits_train'] = shuffle_vertices(D['X_hits_train'], seed=0)
-    D['X_hits_train'] = D['X_hits_train'][:, :args.num_vertices, :]
+    D['X_hits_train'] = D['X_hits_train'][:, : args.num_vertices, :]
     history = model.fit(
         x=D['X_hits_train'],
         y={

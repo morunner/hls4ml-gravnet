@@ -3,12 +3,17 @@ import os
 
 from qgravnet.factory import QGravNetFactory
 from sklearn.metrics import roc_auc_score
-from utils.data import load_processed
-from utils.evaluation import load_run, response_rmse_log
-from utils.files import HLS4ML_OUT_PATH, RESULTS_PATH
-from utils.hls_config import get_build_opts, hls4ml_gravnet_register_extensions, set_converter_opts, set_qgravnet_hls_config
 
 import hls4ml
+from hls4ml_gravnet.utils.data import load_processed
+from hls4ml_gravnet.utils.evaluation import load_run, response_rmse
+from hls4ml_gravnet.utils.files import HLS4ML_OUT_PATH, RESULTS_PATH
+from hls4ml_gravnet.utils.hls_config import (
+    get_build_opts,
+    hls4ml_gravnet_register_extensions,
+    set_converter_opts,
+    set_qgravnet_hls_config,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -38,7 +43,7 @@ def main():
 
     # Validate predictions
     test_energy_pred, test_pid_pred = keras_model.predict(D['X_hits_test'])
-    test_response_rmse = response_rmse_log(D['y_energy_test'], test_energy_pred)
+    test_response_rmse = response_rmse(D['y_energy_test'], test_energy_pred)
     test_auc = roc_auc_score(D['y_pid_test'], test_pid_pred)
     print(f'Response RMSE: {test_response_rmse:.3f}, AUC: {test_auc:.3f}')
 

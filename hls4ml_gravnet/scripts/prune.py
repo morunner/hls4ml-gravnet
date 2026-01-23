@@ -9,10 +9,12 @@ import tensorflow_model_optimization as tfmot
 from keras.layers import Dense
 from keras.models import clone_model
 from qgravnet import QGravNetFactory
-from train import DATA_FILE, batch_size, callbacks, n_epochs, optimizer_cfg
-from utils.config import keras_model_cfg
-from utils.data import load_processed
-from utils.files import RESULTS_PATH
+from train import batch_size, callbacks, n_epochs, optimizer_cfg
+
+from hls4ml_gravnet.utils.config import keras_model_cfg
+from hls4ml_gravnet.utils.data import load_processed
+from hls4ml_gravnet.utils.evaluation import load_run
+from hls4ml_gravnet.utils.files import RESULTS_PATH
 
 
 def apply_pruning(layer, end_step):
@@ -49,9 +51,11 @@ def main():
     args = parse_args()
 
     output_dir = RESULTS_PATH / args.output_dir
-    os.makedirs(output_dir, exist_ok=False)
 
-    D = load_processed(DATA_FILE)
+    train_dir = RESULTS_PATH / args.input_dir
+    model_cfg, _, _, datapath = load_run(train_dir=train_dir)
+
+    D = load_processed(datapath)
 
     pretrained_model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=64, n_features=4)
     pretrained_model.load_weights(RESULTS_PATH / args.input_dir / 'model.weights.h5')
@@ -100,9 +104,12 @@ def main():
         verbose=1,
     )
 
+    os.makedirs(output_dir, exist_ok=False)
+
     # Reload model and strip pruning
     final_model = tfmot.sparsity.keras.strip_pruning(model_for_pruning)
     final_model.save_weights(os.path.join(output_dir, 'model.weights.h5'))
+    final_model.save(os.path.join(output_dir, f'{args.output_dir}.keras'))
 
     with open(os.path.join(output_dir, 'model_cfg.pkl'), 'wb') as f:
         pickle.dump(keras_model_cfg, f)
@@ -112,7 +119,7 @@ def main():
 
     with open(os.path.join(output_dir, 'info.json'), 'w') as f:
         info = {
-            'datapath': str(DATA_FILE),
+            'datapath': str(datapath),
             'n_epochs': n_epochs,
             'batch_size': batch_size,
         }

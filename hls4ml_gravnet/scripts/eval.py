@@ -8,7 +8,7 @@ from sklearn.metrics import roc_auc_score, roc_curve
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" # error only
 
-from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices
+from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices, truncate_or_pad_vertices
 from hls4ml_gravnet.utils.evaluation import load_run, response_rmse
 from hls4ml_gravnet.utils.files import get_project_root_dir
 
@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
     if is_shuffled:
         D["X_hits_test"] = shuffle_vertices(D["X_hits_test"], seed=0)
-    D["X_hits_test"] = D["X_hits_test"][:, :n_vertices, :]
+    D["X_hits_test"] = truncate_or_pad_vertices(D["X_hits_test"], n_vertices)
     test_energy_pred, test_pid_pred = trained_model.predict(D["X_hits_test"])
 
     test_response_rmse = response_rmse(D["y_energy_test"], test_energy_pred)

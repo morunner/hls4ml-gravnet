@@ -8,7 +8,7 @@ from keras.optimizers import AdamW
 from qgravnet import QGravNetFactory
 
 from hls4ml_gravnet.utils.config import keras_model_cfg
-from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices
+from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices, truncate_or_pad_vertices
 from hls4ml_gravnet.utils.evaluation import response_rmse
 from hls4ml_gravnet.utils.files import DATASET_PATH, RESULTS_PATH
 
@@ -60,7 +60,7 @@ def main():
 
     if args.shuffle_vertices:
         D['X_hits_train'] = shuffle_vertices(D['X_hits_train'], seed=0)
-    D['X_hits_train'] = D['X_hits_train'][:, : args.num_vertices, :]
+    D['X_hits_train'] = truncate_or_pad_vertices(D['X_hits_train'], args.num_vertices)
     history = model.fit(
         x=D['X_hits_train'],
         y={

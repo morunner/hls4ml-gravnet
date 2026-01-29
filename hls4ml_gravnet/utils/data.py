@@ -122,6 +122,16 @@ def shuffle_vertices(X_hits, seed=None):
     )
 
 
+def truncate_or_pad_vertices(X_hits, n_vertices: int):
+    """Truncate or pad hits to a fixed number of vertices."""
+    N_events, N_existingVertices, N_features = X_hits.shape
+    result = np.zeros((N_events, n_vertices, N_features), dtype=X_hits.dtype)
+
+    N = min(N_existingVertices, n_vertices)
+    result[:, :N, :] = X_hits[:, :N, :]
+    
+    return result
+
 
 def save_processed(data: Dict[str, Any], filename: Union[str, Path]):
     """Save processed data to a single HDF5 file."""

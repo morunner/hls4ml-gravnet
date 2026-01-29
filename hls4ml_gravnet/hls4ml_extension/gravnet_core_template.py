@@ -15,7 +15,7 @@ gravnet_core_function_template = (
     'nnet::gravnet_core<{input1_t}, {input2_t}, {output_t}, {accum_t}, {coords_diff_t}, {knn_dist_t}, {knn_idx_t}, '
     '{exp_table_t}, {exp_table_idx_t}, {weighted_feature_t}, {config}>({input1}, {input2}, {output});'
 )
-gravnet_core_include_list = ['nnet_utils/nnet_gravnet_core.h']
+gravnet_core_include_list = ['nnet_utils/nnet_gravnet_core.h', 'nnet_utils/nnet_gravnet_core_stream.h']
 
 
 class GravNetCoreConfigTemplate(LayerConfigTemplate):

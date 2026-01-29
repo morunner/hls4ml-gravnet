@@ -11,7 +11,7 @@ global_exchange_config_template = """
     }};\n"""
 
 global_exchange_function_template = 'nnet::global_exchange<{input_t}, {output_t}, {mean_t}, {config}>({input}, {output});'
-global_exchange_include_list = ['nnet_utils/nnet_global_exchange.h']
+global_exchange_include_list = ['nnet_utils/nnet_global_exchange.h', 'nnet_utils/nnet_global_exchange_stream.h']
 
 
 class GlobalExchangeConfigTemplate(hls4ml.backends.template.LayerConfigTemplate):

@@ -11,7 +11,7 @@ def get_project_root_dir(project_name: str) -> Path:
     return Path(*parts)
 
 
-PROJECT_ROOT = get_project_root_dir('hls4ml-gravnet')
+PROJECT_ROOT = get_project_root_dir('hls4ml-garnet-gravnet-thesis')
 DATA_PATH = PROJECT_ROOT / 'data'
 DATASET_PATH = DATA_PATH / 'dataset'
 KERAS_MODEL_PATH = DATA_PATH / 'models'

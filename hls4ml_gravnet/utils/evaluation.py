@@ -48,6 +48,8 @@ def load_run(train_dir):
       weights_path
       history
       datapath
+      n_vertices
+      is_shuffled
     """
     train_dir = os.path.abspath(train_dir)
 

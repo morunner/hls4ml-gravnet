@@ -11,20 +11,29 @@ void read_inputs(hls::stream<coords_T> &coords_stream, hls::stream<feats_T> &fea
                  coord_val_T coords_buffer[CONFIG_T::V * CONFIG_T::S], feat_val_T feats_buffer[CONFIG_T::V * CONFIG_T::F]) {
 #pragma HLS INLINE off
 
+    constexpr unsigned n_pack = coords_T::size / CONFIG_T::S;
+    constexpr unsigned n_iterations = CONFIG_T::V / n_pack;
+
 ReadLoop:
-    for (unsigned int i = 0; i < CONFIG_T::V; i++) {
+    for (unsigned int i = 0; i < n_iterations; i++) {
 #pragma HLS PIPELINE II = 1
 
         coords_T c_pack = coords_stream.read();
         feats_T f_pack = feats_stream.read();
 
-        for (unsigned int s = 0; s < CONFIG_T::S; s++) {
+    ReadPack:
+        for (unsigned int p = 0; p < n_pack; p++) {
 #pragma HLS UNROLL
-            coords_buffer[i * CONFIG_T::S + s] = c_pack[s];
-        }
-        for (unsigned int f = 0; f < CONFIG_T::F; f++) {
+            unsigned int v_idx = i * n_pack + p;
+
+            for (unsigned int s = 0; s < CONFIG_T::S; s++) {
 #pragma HLS UNROLL
-            feats_buffer[i * CONFIG_T::F + f] = f_pack[f];
+                coords_buffer[v_idx * CONFIG_T::S + s] = c_pack[p * CONFIG_T::S + s];
+            }
+            for (unsigned int f = 0; f < CONFIG_T::F; f++) {
+#pragma HLS UNROLL
+                feats_buffer[v_idx * CONFIG_T::F + f] = f_pack[p * CONFIG_T::F + f];
+            }
         }
     }
 }
@@ -38,32 +47,50 @@ void compute_outputs(coord_val_T coords_buffer[CONFIG_T::V * CONFIG_T::S],
 
     typedef typename output_T::value_type out_val_t;
 
+    constexpr unsigned out_F = 2 * CONFIG_T::F;
+    constexpr unsigned n_pack = output_T::size / out_F;
+    constexpr unsigned n_iterations = CONFIG_T::V / n_pack;
+
 ComputeLoop:
-    for (unsigned int i = 0; i < CONFIG_T::V; i++) {
+    for (unsigned int i = 0; i < n_iterations; i++) {
 #pragma HLS PIPELINE II = 1
 
-        knn_dist_T current_v_sq_dists[CONFIG_T::V];
-#pragma HLS ARRAY_PARTITION variable = current_v_sq_dists complete
-        calculate_squared_distances<coord_val_T, coords_diff_T, knn_dist_T, CONFIG_T>(coords_buffer, current_v_sq_dists, i);
+        output_T res_pack;
+        PRAGMA_DATA_PACK(res_pack)
 
-        knn_dist_T knn_dists[CONFIG_T::n_neighbours];
-        knn_idx_T knn_indices[CONFIG_T::n_neighbours];
+    ComputePack:
+        for (unsigned int p = 0; p < n_pack; p++) {
+#pragma HLS UNROLL
+            unsigned int v_idx = i * n_pack + p;
+
+            knn_dist_T current_v_sq_dists[CONFIG_T::V];
+#pragma HLS ARRAY_PARTITION variable = current_v_sq_dists complete
+
+            calculate_squared_distances<coord_val_T, coords_diff_T, knn_dist_T, CONFIG_T>(coords_buffer, current_v_sq_dists,
+                                                                                          v_idx);
+
+            knn_dist_T knn_dists[CONFIG_T::n_neighbours];
+            knn_idx_T knn_indices[CONFIG_T::n_neighbours];
 #pragma HLS ARRAY_PARTITION variable = knn_dists complete
 #pragma HLS ARRAY_PARTITION variable = knn_indices complete
-        select_knn<knn_dist_T, knn_idx_T, CONFIG_T>(current_v_sq_dists, knn_dists, knn_indices);
 
-        out_val_t fmax[CONFIG_T::F];
-        accum_T fsum[CONFIG_T::F];
+            select_knn<knn_dist_T, knn_idx_T, CONFIG_T>(current_v_sq_dists, knn_dists, knn_indices);
+
+            out_val_t fmax[CONFIG_T::F];
+            accum_T fsum[CONFIG_T::F];
 #pragma HLS ARRAY_PARTITION variable = fmax complete
 #pragma HLS ARRAY_PARTITION variable = fsum complete
-        apply_weights_and_reduce<knn_dist_T, knn_idx_T, exp_table_idx_T, exp_table_T, feat_val_T, weighted_feature_T,
-                                 accum_T, out_val_t, CONFIG_T>(knn_dists, knn_indices, exp_table, feats_buffer, fsum, fmax);
 
-        output_T res_pack;
-        for (unsigned int f = 0; f < CONFIG_T::F; f++) {
+            apply_weights_and_reduce<knn_dist_T, knn_idx_T, exp_table_idx_T, exp_table_T, feat_val_T, weighted_feature_T,
+                                     accum_T, out_val_t, CONFIG_T>(knn_dists, knn_indices, exp_table, feats_buffer, fsum,
+                                                                   fmax);
+
+            for (unsigned int f = 0; f < CONFIG_T::F; f++) {
 #pragma HLS UNROLL
-            res_pack[f] = fmax[f];
-            res_pack[CONFIG_T::F + f] = fsum[f] / (out_val_t)CONFIG_T::n_neighbours;
+                unsigned int base = p * out_F;
+                res_pack[base + f] = fmax[f];
+                res_pack[base + CONFIG_T::F + f] = fsum[f] / (out_val_t)CONFIG_T::n_neighbours;
+            }
         }
         res_stream.write(res_pack);
     }

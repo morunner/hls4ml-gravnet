@@ -3,49 +3,11 @@
 
 #include "ap_int.h"
 #include "nnet_gravnet_bitonic_sort.h"
+#include "nnet_gravnet_core_common.h"
 #include <cmath>
 #include <sys/types.h>
 
 namespace nnet {
-
-struct gravnet_core_config {
-    static const unsigned V = 128;
-    static const unsigned S = 4;
-    static const unsigned F = 8;
-    static const unsigned n_neighbours = 32;
-    static const unsigned exp_table_size = 32;
-    static const unsigned exp_table_indexing_shmt = 4;
-};
-
-template <class input_T, class exp_table_idx_T, typename CONFIG_T> unsigned int gravnet_idx_from_real_val(input_T x) {
-#pragma HLS INLINE
-    if (x < 0)
-        x = -x;
-
-    exp_table_idx_T max_idx = CONFIG_T::exp_table_size - 1;
-
-    ap_fixed<x.width + CONFIG_T::exp_table_indexing_shmt, x.iwidth + CONFIG_T::exp_table_indexing_shmt> idx =
-        ((ap_fixed<x.width + CONFIG_T::exp_table_indexing_shmt, x.iwidth + CONFIG_T::exp_table_indexing_shmt>)x
-         << CONFIG_T::exp_table_indexing_shmt);
-
-    if (idx > max_idx)
-        return (unsigned int)max_idx;
-
-    return (unsigned int)idx;
-}
-
-template <class exp_table_T, typename CONFIG_T>
-void gravnet_init_exp_table(exp_table_T table_out[CONFIG_T::exp_table_size]) {
-    table_out[0] = 1.0f;
-    table_out[CONFIG_T::exp_table_size - 1] = 0.0f;
-
-    for (unsigned i = 1; i < CONFIG_T::exp_table_size - 1; i++) {
-#pragma HLS UNROLL
-        float val = (float)((ap_fixed<32, 16>)(i) >> CONFIG_T::exp_table_indexing_shmt);
-        float res = std::exp(-10.0f * val);
-        table_out[i] = (exp_table_T)res;
-    }
-}
 
 template <class coords_T, class coords_diff_T, class knn_dist_T, typename CONFIG_T>
 void calculate_squared_distances(coords_T coords[CONFIG_T::V * CONFIG_T::S], knn_dist_T squared_dists[CONFIG_T::V],

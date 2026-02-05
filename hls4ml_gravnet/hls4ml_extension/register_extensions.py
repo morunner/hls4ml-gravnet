@@ -28,6 +28,7 @@ def register_extensions(backend: str):
 
     hls_files = resources.files('hls4ml_gravnet.hls')
     filenames = [
+        'nnet_gravnet_core_common.h',
         'nnet_gravnet_core.h',
         'nnet_gravnet_core_stream.h',
         'nnet_gravnet_bitonic_sort.h',

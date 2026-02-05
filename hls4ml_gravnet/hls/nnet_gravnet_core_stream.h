@@ -2,7 +2,7 @@
 #define NNET_GRAVNET_CORE_STREAM_H_
 
 #include "hls_stream.h"
-#include "nnet_gravnet_core.h"
+#include "nnet_gravnet_core_common.h"
 
 namespace nnet {
 

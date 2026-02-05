@@ -17,6 +17,8 @@ gravnet_core_function_template = (
 )
 gravnet_core_include_list = [
     'nnet_utils/nnet_gravnet_core_common.h',
+    'nnet_utils/nnet_gravnet_core.h',
+    'nnet_utils/nnet_gravnet_core_stream.h',
 ]
 
 

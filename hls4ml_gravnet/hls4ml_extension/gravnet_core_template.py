@@ -2,20 +2,24 @@ from hls4ml.backends.template import FunctionCallTemplate, LayerConfigTemplate
 from hls4ml_gravnet.hls4ml_extension.gravnet_core import HGravNetCore
 
 gravnet_core_config_template = """
-    struct config{index} : nnet::gravnet_core_config {{
-        static const unsigned V = {V};
-        static const unsigned S = {S};
-        static const unsigned F = {F};
-        static const unsigned n_neighbours = {n_neighbours};
-        static const unsigned exp_table_size = {exp_table_size};
-        static const unsigned exp_table_indexing_shmt = {exp_table_indexing_shmt};
-    }};\n"""
+struct config{index} : nnet::gravnet_core_config {{
+    static const unsigned V = {V};
+    static const unsigned S = {S};
+    static const unsigned F = {F};
+    static const unsigned n_neighbours = {n_neighbours};
+    static const unsigned exp_table_size = {exp_table_size};
+    static const unsigned exp_table_indexing_shmt = {exp_table_indexing_shmt};
+}};\n"""
 
 gravnet_core_function_template = (
     'nnet::gravnet_core<{input1_t}, {input2_t}, {output_t}, {accum_t}, {coords_diff_t}, {knn_dist_t}, {knn_idx_t}, '
     '{exp_table_t}, {exp_table_idx_t}, {weighted_feature_t}, {config}>({input1}, {input2}, {output});'
 )
-gravnet_core_include_list = ['nnet_utils/nnet_gravnet_core.h']
+gravnet_core_include_list = [
+    'nnet_utils/nnet_gravnet_core_common.h',
+    'nnet_utils/nnet_gravnet_core.h',
+    'nnet_utils/nnet_gravnet_core_stream.h',
+]
 
 
 class GravNetCoreConfigTemplate(LayerConfigTemplate):

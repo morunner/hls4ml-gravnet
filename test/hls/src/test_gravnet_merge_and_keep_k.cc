@@ -33,7 +33,7 @@ TEST_P(Hls4mlGravNetMergeAndKeepKTest, MergesAndKeepsSmallestK) {
     std::copy(params.distB.begin(), params.distB.end(), distB);
     std::copy(params.idxB.begin(), params.idxB.end(), idxB);
 
-    merge_and_keep_k<KEEP_K, int, int>(distA, idxA, distB, idxB, distOut, idxOut);
+    nnet::merge_and_keep_k<KEEP_K>(distA, idxA, distB, idxB, distOut, idxOut);
 
     for (int i = 0; i < KEEP_K; ++i) {
         EXPECT_EQ(distOut[i], params.distOut_expected[i]) << "Output dist mismatch at index " << i;

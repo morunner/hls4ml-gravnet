@@ -29,7 +29,7 @@ TEST_P(Hls4mlGravNetSortBitonicSequenceTest, SortsBitonicSequenceCorrectly) {
     std::copy(params.idx_in.begin(), params.idx_in.end(), idx);
 
     // Call the function under test
-    sort_bitonic_sequence<TEST_N, int, int>(dist, idx);
+    nnet::sort_bitonic_sequence<TEST_N>(dist, idx);
 
     // Verify results
     for (int i = 0; i < TEST_N; ++i) {

@@ -27,7 +27,14 @@ def register_extensions(backend: str):
     backend.register_template(GlobalExchangeFunctionTemplate)
 
     hls_files = resources.files('hls4ml_gravnet.hls')
-    filenames = ['nnet_gravnet_core.h', 'nnet_gravnet_bitonic_sort.h', 'nnet_global_exchange.h']
+    filenames = [
+        'nnet_gravnet_core_common.h',
+        'nnet_gravnet_core.h',
+        'nnet_gravnet_core_stream.h',
+        'nnet_gravnet_bitonic_sort.h',
+        'nnet_global_exchange.h',
+        'nnet_global_exchange_stream.h',
+    ]
     for fname in filenames:
         with resources.as_file(hls_files / fname) as source_path:
             backend.register_source(str(source_path))

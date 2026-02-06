@@ -18,7 +18,7 @@ class Hls4mlGravNetCompareAndSwapTest : public ::testing::TestWithParam<compare_
 TEST_P(Hls4mlGravNetCompareAndSwapTest, SwapsCorrectlyBasedOnDistance) {
     compare_and_swap_params params = GetParam();
 
-    gravnet_compare_and_swap(params.d1_in, params.i1_in, params.d2_in, params.i2_in);
+    nnet::gravnet_compare_and_swap(params.d1_in, params.i1_in, params.d2_in, params.i2_in);
 
     EXPECT_EQ(params.d1_in, params.d1_expected) << "d1 (smaller) mismatch";
     EXPECT_EQ(params.d2_in, params.d2_expected) << "d2 (larger) mismatch";

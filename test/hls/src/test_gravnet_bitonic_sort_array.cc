@@ -26,7 +26,7 @@ TEST_P(Hls4mlGravNetBitonicSortArrayTest, SortsArbitrarySequenceCorrectly) {
     std::copy(params.dist_in.begin(), params.dist_in.end(), dist);
     std::copy(params.idx_in.begin(), params.idx_in.end(), idx);
 
-    bitonic_sort_array<SORT_N, int, int>(dist, idx);
+    nnet::bitonic_sort_array<SORT_N>(dist, idx);
 
     for (int i = 0; i < SORT_N; ++i) {
         EXPECT_EQ(dist[i], params.dist_expected[i]) << "Distance mismatch at index " << i;

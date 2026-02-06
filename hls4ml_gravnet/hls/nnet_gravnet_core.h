@@ -1,7 +1,6 @@
 #ifndef NNET_GRAVNET_CORE_H_
 #define NNET_GRAVNET_CORE_H_
 
-#include "ap_int.h"
 #include "nnet_gravnet_bitonic_sort.h"
 #include "nnet_gravnet_core_common.h"
 #include <cmath>
@@ -68,7 +67,7 @@ void select_knn(knn_dist_T squared_distances[CONFIG_T::V], knn_dist_T knn_dists[
             dist_lists[i][k] = squared_distances[i * K + k];
             idx_lists[i][k] = (knn_idx_T)(i * K + k);
         }
-        bitonic_sort_array<K, knn_dist_T, knn_idx_T>(dist_lists[i], idx_lists[i]);
+        bitonic_sort_array<K>(dist_lists[i], idx_lists[i]);
     }
 
     // Merge lists by comparing them in a tree like fashion, pushing
@@ -86,8 +85,8 @@ loop_tree_depth:
 #pragma HLS ARRAY_PARTITION variable = tmp_dists complete
 #pragma HLS ARRAY_PARTITION variable = tmp_indices complete
 
-            merge_and_keep_k<K, knn_dist_T, knn_idx_T>(dist_lists[left_i], idx_lists[left_i], dist_lists[right_i],
-                                                       idx_lists[right_i], tmp_dists, tmp_indices);
+            merge_and_keep_k<K>(dist_lists[left_i], idx_lists[left_i], dist_lists[right_i], idx_lists[right_i], tmp_dists,
+                                tmp_indices);
             for (int k = 0; k < K; k++) {
 #pragma HLS UNROLL
                 dist_lists[left_i][k] = tmp_dists[k];

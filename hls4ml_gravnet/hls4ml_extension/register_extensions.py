@@ -32,7 +32,6 @@ def register_extensions(backend: str):
         'nnet_gravnet_core.h',
         'nnet_gravnet_core_stream.h',
         'nnet_gravnet_bitonic_sort.h',
-        'nnet_gravnet_bitonic_sort_stream.h',
         'nnet_global_exchange.h',
         'nnet_global_exchange_stream.h',
     ]

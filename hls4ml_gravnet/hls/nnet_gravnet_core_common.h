@@ -15,6 +15,21 @@ struct gravnet_core_config {
     static const unsigned exp_table_indexing_shmt = 4;
 };
 
+template <typename T> struct gravnet_core_limits;
+
+template <int W, int I, ap_q_mode Q, ap_o_mode O, int N> struct gravnet_core_limits<ap_fixed<W, I, Q, O, N>> {
+    typedef ap_fixed<W, I, Q, O, N> T;
+
+    static constexpr double min() { return -(1 << (I - 1)); }
+
+    static constexpr double max() {
+        return (1 << (I - 1)) - (1.0 / (1 << (W - I)));
+    }
+
+    static T min_val() { return (T)min(); }
+    static T max_val() { return (T)max(); }
+};
+
 template <class input_T, class exp_table_idx_T, typename CONFIG_T> unsigned int gravnet_idx_from_real_val(input_T x) {
 #pragma HLS INLINE
     if (x < 0)

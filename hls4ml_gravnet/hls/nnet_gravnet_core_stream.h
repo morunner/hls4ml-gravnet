@@ -123,7 +123,7 @@ void apply_weights_and_reduce_one_pack(hls::stream<nnet::array<knn_dist_T, CONFI
         for (int f = 0; f < CONFIG_T::F; f++) {
 #pragma HLS UNROLL
             acc_sum[f] = 0;
-            acc_max[f] = -32000;
+            acc_max[f] = gravnet_core_limits<accum_T>::min_val();
         }
 
         nnet::array<knn_dist_T, CONFIG_T::n_neighbours> dists = knn_dists.read();

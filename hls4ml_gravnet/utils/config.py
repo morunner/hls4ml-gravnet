@@ -9,6 +9,7 @@ keras_model_cfg = {
     'n_filters': 8,
     'n_propagate': 8,
     'n_postgn_dense_blocks': 2,
+    'distance_metric': 'l1', 
     'dense_layer_dims': {
         'input_dense': 8,
         'post_gn': 16,

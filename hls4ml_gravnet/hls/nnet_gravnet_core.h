@@ -9,8 +9,7 @@
 namespace nnet {
 
 template <class coords_T, class coords_diff_T, class knn_dist_T, typename CONFIG_T>
-void calculate_squared_distances(coords_T coords[CONFIG_T::V * CONFIG_T::S], knn_dist_T squared_dists[CONFIG_T::V],
-                                 unsigned int i) {
+void calculate_distances(coords_T coords[CONFIG_T::V * CONFIG_T::S], knn_dist_T dists[CONFIG_T::V], unsigned int i) {
 #pragma HLS INLINE
 #pragma HLS ARRAY_PARTITION variable = coords complete
 
@@ -26,25 +25,25 @@ void calculate_squared_distances(coords_T coords[CONFIG_T::V * CONFIG_T::S], knn
 
     for (unsigned int j = 0; j < CONFIG_T::V; j++) {
 #pragma HLS UNROLL
-        knn_dist_T dist_sq = 0;
+        knn_dist_T dist = 0;
         const unsigned int idx_j = j * CONFIG_T::S;
 
         for (unsigned int s = 0; s < CONFIG_T::S; s++) {
 #pragma HLS UNROLL
-            coords_diff_T diff = coords[idx_i + s] - coords[idx_j + s];
-            dist_sq += (knn_dist_T)(diff * diff);
+            dist += CONFIG_T::template distance_fn<coords_T, knn_dist_T, coords_diff_T>::dist(coords[idx_i + s],
+                                                                                              coords[idx_j + s]);
         }
-        squared_dists[j] = dist_sq;
+        dists[j] = dist;
     }
 
-    squared_dists[i] = 32000;
+    dists[i] = gravnet_core_limits<knn_dist_T>::max_val();
 }
 
 /**
  * @brief Computes k nearest neighbour pairs (distance, index).
  */
 template <class knn_dist_T, class knn_idx_T, typename CONFIG_T>
-void select_knn(knn_dist_T squared_distances[CONFIG_T::V], knn_dist_T knn_dists[CONFIG_T::n_neighbours],
+void select_knn(knn_dist_T distances[CONFIG_T::V], knn_dist_T knn_dists[CONFIG_T::n_neighbours],
                 knn_idx_T knn_indices[CONFIG_T::n_neighbours]) {
 #pragma HLS INLINE
     const int K = CONFIG_T::n_neighbours;
@@ -64,7 +63,7 @@ void select_knn(knn_dist_T squared_distances[CONFIG_T::V], knn_dist_T knn_dists[
 #pragma HLS UNROLL
         for (int k = 0; k < K; k++) {
 #pragma HLS UNROLL
-            dist_lists[i][k] = squared_distances[i * K + k];
+            dist_lists[i][k] = distances[i * K + k];
             idx_lists[i][k] = (knn_idx_T)(i * K + k);
         }
         bitonic_sort_array<K>(dist_lists[i], idx_lists[i]);
@@ -95,7 +94,6 @@ loop_tree_depth:
         }
     }
 
-    // Output
     for (int k = 0; k < K; k++) {
 #pragma HLS UNROLL
         knn_dists[k] = dist_lists[0][k];
@@ -117,7 +115,7 @@ void apply_weights_and_reduce(knn_dist_T knn_dists[CONFIG_T::n_neighbours], knn_
     for (int f = 0; f < CONFIG_T::F; f++) {
 #pragma HLS UNROLL
         acc_sum[f] = 0;
-        acc_max[f] = -32000;
+        acc_max[f] = gravnet_core_limits<accum_T>::min_val();
     }
 
 loop_weigh_and_reduce:
@@ -166,15 +164,15 @@ loop_dist_outer:
 #pragma HLS PIPELINE rewind
         unsigned int knn_offset = i * CONFIG_T::n_neighbours;
 
-        knn_dist_T current_v_sq_dists[CONFIG_T::V];
-#pragma HLS ARRAY_PARTITION variable = current_v_sq_dists complete
-        calculate_squared_distances<coords_T, coords_diff_T, knn_dist_T, CONFIG_T>(coords, current_v_sq_dists, i);
+        knn_dist_T current_v_dists[CONFIG_T::V];
+#pragma HLS ARRAY_PARTITION variable = current_v_dists complete
+        calculate_distances<coords_T, coords_diff_T, knn_dist_T, CONFIG_T>(coords, current_v_dists, i);
 
         knn_dist_T knn_dists[CONFIG_T::n_neighbours];
         knn_idx_T knn_indices[CONFIG_T::n_neighbours];
 #pragma HLS ARRAY_PARTITION variable = knn_dists complete
 #pragma HLS ARRAY_PARTITION variable = knn_indices complete
-        select_knn<knn_dist_T, knn_idx_T, CONFIG_T>(current_v_sq_dists, knn_dists, knn_indices);
+        select_knn<knn_dist_T, knn_idx_T, CONFIG_T>(current_v_dists, knn_dists, knn_indices);
 
         output_T fmax[CONFIG_T::F];
         accum_T fsum[CONFIG_T::F];

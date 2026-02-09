@@ -22,6 +22,7 @@ def parse_gravnet_layer(keras_layer, input_names, input_shapes, data_reader):
     layer['S'] = coords_shape[1]
     layer['F'] = n_in_feat
     layer['n_neighbours'] = keras_layer['config']['n_neighbours']
+    layer['distance_metric'] = keras_layer['config']['distance_metric']
 
     output_shape = [None, n_vertices, n_out_features]
     return layer, output_shape

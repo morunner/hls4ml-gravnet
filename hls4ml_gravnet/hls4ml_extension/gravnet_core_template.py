@@ -9,6 +9,8 @@ struct config{index} : nnet::gravnet_core_config {{
     static const unsigned n_neighbours = {n_neighbours};
     static const unsigned exp_table_size = {exp_table_size};
     static const unsigned exp_table_indexing_shmt = {exp_table_indexing_shmt};
+    template<class coord_T, class res_T, class diff_T>
+    using distance_fn = nnet::{distance_metric}<coord_T, res_T, diff_T>;
 }};\n"""
 
 gravnet_core_function_template = (
@@ -35,6 +37,7 @@ class GravNetCoreConfigTemplate(LayerConfigTemplate):
         params['F'] = node.get_attr('F')
 
         params['n_neighbours'] = node.get_attr('n_neighbours')
+        params['distance_metric'] = node.get_attr('distance_metric')
 
         params['exp_table_size'] = node.get_attr('exp_table_size')
         params['exp_table_indexing_shmt'] = node.get_attr('exp_table_indexing_shmt')

@@ -40,7 +40,7 @@ ReadLoop:
 
 template <unsigned n_iterations, unsigned n_pack, class coords_T, class coords_diff_T, class knn_dist_T, class knn_idx_T,
           typename CONFIG_T>
-void calculate_squared_distances(
+void calculate_distances(
     typename coords_T::value_type coords_buffer[CONFIG_T::V][CONFIG_T::S],
     hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> dist_streams[n_pack][CONFIG_T::V / CONFIG_T::n_neighbours],
     hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> idx_streams[n_pack][CONFIG_T::V / CONFIG_T::n_neighbours]) {
@@ -76,17 +76,17 @@ VertexLoop:
                 unsigned int L = j / CONFIG_T::n_neighbours;
                 unsigned int k = j % CONFIG_T::n_neighbours;
 
-                knn_dist_T dist_sq = 0;
+                knn_dist_T dist = 0;
                 for (unsigned int s = 0; s < CONFIG_T::S; s++) {
 #pragma HLS UNROLL
-                    coords_diff_T diff = query_coords[s] - coords_buffer[j][s];
-                    dist_sq += (knn_dist_T)(diff * diff);
+                    dist += CONFIG_T::template distance_fn<typename coords_T::value_type, knn_dist_T, coords_diff_T>::dist(
+                        query_coords[s], coords_buffer[j][s]);
                 }
 
                 if (u_idx == j)
-                    dist_sq = gravnet_core_limits<knn_dist_T>::max_val();
+                    dist = gravnet_core_limits<knn_dist_T>::max_val();
 
-                chunks_dist[L][k] = dist_sq;
+                chunks_dist[L][k] = dist;
                 chunks_idx[L][k] = (knn_idx_T)j;
             }
 
@@ -128,8 +128,7 @@ void select_knn(
                 nnet::array<knn_dist_T, CONFIG_T::n_neighbours> merged_d;
                 nnet::array<knn_idx_T, CONFIG_T::n_neighbours> merged_i;
 
-                merge_and_keep_k<CONFIG_T::n_neighbours>(current_best_d, current_best_i, next_d,
-                                                                                next_i, merged_d, merged_i);
+                merge_and_keep_k<CONFIG_T::n_neighbours>(current_best_d, current_best_i, next_d, next_i, merged_d, merged_i);
 
                 current_best_d = merged_d;
                 current_best_i = merged_i;
@@ -239,7 +238,7 @@ void gravnet_core(hls::stream<coords_T> &coords_stream, hls::stream<feats_T> &fe
     read_inputs<n_iterations, n_pack, coords_T, feats_T, coord_val_t, feat_val_t, CONFIG_T>(coords_stream, feats_stream,
                                                                                             coords_buffer, feats_buffer);
 
-    calculate_squared_distances<n_iterations, n_pack, coords_T, coords_diff_T, knn_dist_T, knn_idx_T, CONFIG_T>(
+    calculate_distances<n_iterations, n_pack, coords_T, coords_diff_T, knn_dist_T, knn_idx_T, CONFIG_T>(
         coords_buffer, dist_streams, idx_streams);
 
     select_knn<n_iterations, n_pack, knn_dist_T, knn_idx_T, CONFIG_T>(dist_streams, idx_streams, knn_dists, knn_indices);

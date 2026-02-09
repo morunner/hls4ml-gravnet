@@ -6,6 +6,24 @@
 
 namespace nnet {
 
+template <class coord_T, class res_T, class diff_T> struct l2_squared {
+    static res_T dist(coord_T a, coord_T b) {
+#pragma HLS INLINE
+        diff_T diff = a - b;
+        return (res_T)(diff * diff);
+    }
+};
+
+template <class coord_T, class res_T, class diff_T> struct l1 {
+    static res_T dist(coord_T a, coord_T b) {
+#pragma HLS INLINE
+        diff_T diff = a - b;
+        if (diff < 0)
+            diff = -diff;
+        return diff;
+    }
+};
+
 struct gravnet_core_config {
     static const unsigned V = 128;
     static const unsigned S = 4;
@@ -13,6 +31,7 @@ struct gravnet_core_config {
     static const unsigned n_neighbours = 32;
     static const unsigned exp_table_size = 32;
     static const unsigned exp_table_indexing_shmt = 4;
+    template <class coord_T, class res_T, class diff_T> using distance_fn = nnet::l2_squared<coord_T, res_T, diff_T>;
 };
 
 template <typename T> struct gravnet_core_limits;
@@ -22,9 +41,7 @@ template <int W, int I, ap_q_mode Q, ap_o_mode O, int N> struct gravnet_core_lim
 
     static constexpr double min() { return -(1 << (I - 1)); }
 
-    static constexpr double max() {
-        return (1 << (I - 1)) - (1.0 / (1 << (W - I)));
-    }
+    static constexpr double max() { return (1 << (I - 1)) - (1.0 / (1 << (W - I))); }
 
     static T min_val() { return (T)min(); }
     static T max_val() { return (T)max(); }

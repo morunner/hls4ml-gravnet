@@ -12,6 +12,8 @@ struct gravnet_config {
     static const unsigned exp_table_size = {{ gravnet_config.exp_table_size }};
     static const unsigned exp_table_size_nbits = {{ gravnet_config.exp_table_size_nbits }};
     static const unsigned exp_table_indexing_shmt = {{ gravnet_config.exp_table_indexing_shmt }};
+    template<class coord_T, class res_T, class diff_T>
+    using distance_fn = nnet::{{ gravnet_config.distance_metric }}<coord_T, res_T, diff_T>;
 };
 
 struct global_exchange_config {

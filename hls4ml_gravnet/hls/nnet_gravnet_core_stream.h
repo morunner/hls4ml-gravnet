@@ -3,16 +3,17 @@
 
 #include "hls_stream.h"
 #include "nnet_gravnet_bitonic_sort.h"
+#include "nnet_gravnet_bitonic_sort_stream.h"
 #include "nnet_gravnet_core_common.h"
 #include "nnet_types.h"
-#include "nnet_gravnet_bitonic_sort_stream.h"
 
 namespace nnet {
 
 template <unsigned n_iterations, unsigned n_pack, class coords_T, class feats_T, class coord_val_T, class feat_val_T,
           typename CONFIG_T>
 void read_inputs(hls::stream<coords_T> &coords_stream, hls::stream<feats_T> &feats_stream,
-                 coord_val_T coords_buffer[CONFIG_T::V][CONFIG_T::S], feat_val_T feats_buffer[CONFIG_T::V][CONFIG_T::F]) {
+                 coord_val_T coords_buffer[CONFIG_T::V][CONFIG_T::S],
+                 feat_val_T feats_buffer[n_pack][CONFIG_T::n_neighbours][n_pack][n_iterations][CONFIG_T::F]) {
 #pragma HLS INLINE off
 
 ReadLoop:
@@ -31,9 +32,18 @@ ReadLoop:
 #pragma HLS UNROLL
                 coords_buffer[v_idx][s] = c_pack[p * CONFIG_T::S + s];
             }
+
             for (unsigned int f = 0; f < CONFIG_T::F; f++) {
 #pragma HLS UNROLL
-                feats_buffer[v_idx][f] = f_pack[p * CONFIG_T::F + f];
+                feat_val_T val = f_pack[p * CONFIG_T::F + f];
+
+                for (unsigned int p_read = 0; p_read < n_pack; p_read++) {
+#pragma HLS UNROLL
+                    for (unsigned int n_read = 0; n_read < CONFIG_T::n_neighbours; n_read++) {
+#pragma HLS UNROLL
+                        feats_buffer[p_read][n_read][p][i][f] = val;
+                    }
+                }
             }
         }
     }
@@ -103,7 +113,7 @@ template <unsigned n_iterations, unsigned n_pack, class feat_val_T, class output
           class knn_idx_T, class exp_table_T, class exp_table_idx_T, class weighted_feature_T, typename CONFIG_T>
 void apply_weights_and_reduce(hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> knn_dists[n_pack],
                               hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> knn_indices[n_pack],
-                              feat_val_T feats_buffer[CONFIG_T::V][CONFIG_T::F],
+                              feat_val_T feats_buffer[n_pack][CONFIG_T::n_neighbours][n_pack][n_iterations][CONFIG_T::F],
                               exp_table_T exp_table[CONFIG_T::exp_table_size], hls::stream<output_T> &res_stream) {
     accum_T acc_sum[n_pack][CONFIG_T::F];
     accum_T acc_max[n_pack][CONFIG_T::F];
@@ -130,16 +140,18 @@ ReduceVertexLoop:
 
             for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
 #pragma HLS UNROLL
-
                 knn_dist_T d = dists[n];
                 unsigned int idx = indices[n];
+
+                unsigned int read_i = idx / n_pack;
+                unsigned int read_p = idx % n_pack;
 
                 unsigned int table_idx = gravnet_idx_from_real_val<knn_dist_T, exp_table_idx_T, CONFIG_T>(d);
                 exp_table_T w = exp_table[table_idx];
 
                 for (unsigned int f = 0; f < CONFIG_T::F; f++) {
 #pragma HLS UNROLL
-                    feat_val_T feat = feats_buffer[idx][f];
+                    feat_val_T feat = feats_buffer[p][n][read_p][read_i][f];
                     weighted_feature_T val = (weighted_feature_T)(feat * w);
 
                     acc_sum[p][f] += val;
@@ -150,7 +162,6 @@ ReduceVertexLoop:
             }
 
             unsigned int pack_offset = p * 2 * CONFIG_T::F;
-
             for (unsigned int f = 0; f < CONFIG_T::F; f++) {
 #pragma HLS UNROLL
                 out_pack[pack_offset + f] = acc_max[p][f];
@@ -177,8 +188,12 @@ void gravnet_core(hls::stream<coords_T> &coords_stream, hls::stream<feats_T> &fe
     coord_val_t coords_buffer[CONFIG_T::V][CONFIG_T::S];
 #pragma HLS ARRAY_PARTITION variable = coords_buffer complete dim = 0
 
-    feat_val_t feats_buffer[CONFIG_T::V][CONFIG_T::F];
-#pragma HLS ARRAY_PARTITION variable = feats_buffer complete dim = 0
+    feat_val_t feats_buffer[n_pack][CONFIG_T::n_neighbours][n_pack][n_iterations][CONFIG_T::F];
+#pragma HLS BIND_STORAGE variable = feats_buffer type = ram_2p impl = bram
+#pragma HLS ARRAY_PARTITION variable = feats_buffer complete dim = 1
+#pragma HLS ARRAY_PARTITION variable = feats_buffer complete dim = 2
+#pragma HLS ARRAY_PARTITION variable = feats_buffer complete dim = 3
+#pragma HLS ARRAY_PARTITION variable = feats_buffer complete dim = 5
 
     static exp_table_T exp_table[CONFIG_T::exp_table_size];
 #pragma HLS ARRAY_PARTITION variable = exp_table complete

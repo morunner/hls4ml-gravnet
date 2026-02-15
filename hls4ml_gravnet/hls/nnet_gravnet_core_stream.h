@@ -5,6 +5,7 @@
 #include "nnet_gravnet_bitonic_sort.h"
 #include "nnet_gravnet_core_common.h"
 #include "nnet_types.h"
+#include "nnet_gravnet_bitonic_sort_stream.h"
 
 namespace nnet {
 
@@ -56,9 +57,9 @@ VertexLoop:
 #pragma HLS UNROLL
 
             unsigned int u_idx = i * n_pack + p;
-
             typename coords_T::value_type query_coords[CONFIG_T::S];
 #pragma HLS ARRAY_PARTITION variable = query_coords complete
+
             for (unsigned int s = 0; s < CONFIG_T::S; s++) {
 #pragma HLS UNROLL
                 query_coords[s] = coords_buffer[u_idx][s];
@@ -72,7 +73,6 @@ VertexLoop:
         TargetLoop:
             for (unsigned int j = 0; j < CONFIG_T::V; j++) {
 #pragma HLS UNROLL
-
                 unsigned int L = j / CONFIG_T::n_neighbours;
                 unsigned int k = j % CONFIG_T::n_neighbours;
 
@@ -95,47 +95,6 @@ VertexLoop:
                 dist_streams[p][L].write(chunks_dist[L]);
                 idx_streams[p][L].write(chunks_idx[L]);
             }
-        }
-    }
-}
-
-template <unsigned n_iterations, unsigned n_pack, class knn_dist_T, class knn_idx_T, typename CONFIG_T>
-void select_knn(
-    hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> dist_streams[n_pack][CONFIG_T::V / CONFIG_T::n_neighbours],
-    hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> idx_streams[n_pack][CONFIG_T::V / CONFIG_T::n_neighbours],
-    hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> knn_dists[n_pack],
-    hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> knn_indices[n_pack]) {
-
-    constexpr unsigned num_leaves = CONFIG_T::V / CONFIG_T::n_neighbours;
-
-    for (unsigned int i = 0; i < n_iterations; i++) {
-#pragma HLS PIPELINE II = 1
-        for (unsigned int p = 0; p < n_pack; p++) {
-#pragma HLS UNROLL
-
-            nnet::array<knn_dist_T, CONFIG_T::n_neighbours> current_best_d = dist_streams[p][0].read();
-            nnet::array<knn_idx_T, CONFIG_T::n_neighbours> current_best_i = idx_streams[p][0].read();
-
-            bitonic_sort_array<CONFIG_T::n_neighbours>(current_best_d, current_best_i);
-
-            for (unsigned int n = 1; n < num_leaves; n++) {
-#pragma HLS UNROLL
-                nnet::array<knn_dist_T, CONFIG_T::n_neighbours> next_d = dist_streams[p][n].read();
-                nnet::array<knn_idx_T, CONFIG_T::n_neighbours> next_i = idx_streams[p][n].read();
-
-                bitonic_sort_array<CONFIG_T::n_neighbours>(next_d, next_i);
-
-                nnet::array<knn_dist_T, CONFIG_T::n_neighbours> merged_d;
-                nnet::array<knn_idx_T, CONFIG_T::n_neighbours> merged_i;
-
-                merge_and_keep_k<CONFIG_T::n_neighbours>(current_best_d, current_best_i, next_d, next_i, merged_d, merged_i);
-
-                current_best_d = merged_d;
-                current_best_i = merged_i;
-            }
-
-            knn_dists[p].write(current_best_d);
-            knn_indices[p].write(current_best_i);
         }
     }
 }
@@ -241,7 +200,8 @@ void gravnet_core(hls::stream<coords_T> &coords_stream, hls::stream<feats_T> &fe
     calculate_distances<n_iterations, n_pack, coords_T, coords_diff_T, knn_dist_T, knn_idx_T, CONFIG_T>(
         coords_buffer, dist_streams, idx_streams);
 
-    select_knn<n_iterations, n_pack, knn_dist_T, knn_idx_T, CONFIG_T>(dist_streams, idx_streams, knn_dists, knn_indices);
+    select_knn_tree<n_iterations, n_pack, knn_dist_T, knn_idx_T, CONFIG_T>(dist_streams, idx_streams, knn_dists,
+                                                                           knn_indices);
 
     apply_weights_and_reduce<n_iterations, n_pack, feat_val_t, output_T, accum_T, knn_dist_T, knn_idx_T, exp_table_T,
                              exp_table_idx_T, weighted_feature_T, CONFIG_T>(knn_dists, knn_indices, feats_buffer, exp_table,

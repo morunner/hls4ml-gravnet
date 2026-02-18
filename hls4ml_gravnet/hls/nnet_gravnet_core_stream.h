@@ -80,23 +80,22 @@ VertexLoop:
 #pragma HLS ARRAY_PARTITION variable = chunks_dist complete
 #pragma HLS ARRAY_PARTITION variable = chunks_idx complete
 
-        TargetLoop:
-            for (unsigned int j = 0; j < CONFIG_T::V; j++) {
+    TargetLoop_L:
+        for (unsigned int L = 0; L < num_chunks; L++) {
 #pragma HLS UNROLL
-                unsigned int L = j / CONFIG_T::n_neighbours;
-                unsigned int k = j % CONFIG_T::n_neighbours;
+        TargetLoop_k:
+            for (unsigned int k = 0; k < CONFIG_T::n_neighbours; k++) {
+#pragma HLS UNROLL
+                unsigned int j = L * CONFIG_T::n_neighbours + k;
 
                 knn_dist_T dist = 0;
                 for (unsigned int s = 0; s < CONFIG_T::S; s++) {
 #pragma HLS UNROLL
                     dist += CONFIG_T::template distance_fn<typename coords_T::value_type, knn_dist_T, coords_diff_T>::dist(
-                        query_coords[s], coords_buffer[j][s]);
+                        coords_buffer[i][s], coords_buffer[j][s]);
                 }
 
-                if (u_idx == j)
-                    dist = gravnet_core_limits<knn_dist_T>::max_val();
-
-                chunks_dist[L][k] = dist;
+                chunks_dist[L][k] = (i == j) ? gravnet_core_limits<knn_dist_T>::max_val() : dist;
                 chunks_idx[L][k] = (knn_idx_T)j;
             }
 

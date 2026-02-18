@@ -17,9 +17,8 @@ template <class coord_T, class res_T, class diff_T> struct l2_squared {
 template <class coord_T, class res_T, class diff_T> struct l1 {
     static res_T dist(coord_T a, coord_T b) {
 #pragma HLS INLINE
-        diff_T diff = a - b;
-        if (diff < 0)
-            diff = -diff;
+        diff_T tmp = a - b;
+        res_T diff = (tmp > 0) ? (res_T)tmp : (res_T)(-tmp);
         return diff;
     }
 };

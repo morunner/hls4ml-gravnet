@@ -50,6 +50,62 @@ ReadLoop:
     }
 }
 
+template <class query_coord_T, class coords_T, typename CONFIG_T>
+void broadcast_centers(typename coords_T::value_type coords_buffer[CONFIG_T::V][CONFIG_T::S],
+                       hls::stream<query_coord_T> center_streams[CONFIG_T::V / CONFIG_T::n_neighbours]) {
+    constexpr unsigned int num_chunks = CONFIG_T::V / CONFIG_T::n_neighbours;
+
+BroadcastLoop:
+    for (unsigned int i = 0; i < CONFIG_T::V; i++) {
+#pragma HLS PIPELINE II = 1
+        query_coord_T query_coord;
+
+        for (unsigned int s = 0; s < CONFIG_T::S; s++) {
+#pragma HLS UNROLL
+            query_coord[s] = coords_buffer[i][s];
+        }
+
+        for (unsigned int L = 0; L < num_chunks; L++) {
+#pragma HLS UNROLL
+            center_streams[L].write(query_coord);
+        }
+    }
+}
+
+template <class query_coord_T, class coords_T, class coords_diff_T, class knn_dist_T, class knn_idx_T, typename CONFIG_T>
+void compute_chunk(unsigned int L, typename coords_T::value_type coords_buffer[CONFIG_T::V][CONFIG_T::S],
+                   hls::stream<query_coord_T> &center_stream,
+                   hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> &dist_stream,
+                   hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> &idx_stream) {
+
+ChunkLoop:
+    for (unsigned int i = 0; i < CONFIG_T::V; i++) {
+#pragma HLS PIPELINE II = 1
+
+        query_coord_T center = center_stream.read();
+        nnet::array<knn_dist_T, CONFIG_T::n_neighbours> chunk_dist;
+        nnet::array<knn_idx_T, CONFIG_T::n_neighbours> chunk_idx;
+
+        for (unsigned int k = 0; k < CONFIG_T::n_neighbours; k++) {
+#pragma HLS UNROLL
+            unsigned int j = L * CONFIG_T::n_neighbours + k;
+
+            knn_dist_T dist = 0;
+            for (unsigned int s = 0; s < CONFIG_T::S; s++) {
+#pragma HLS UNROLL
+                dist += CONFIG_T::template distance_fn<typename coords_T::value_type, knn_dist_T, coords_diff_T>::dist(
+                    center[s], coords_buffer[j][s]);
+            }
+
+            chunk_dist[k] = (i == j) ? gravnet_core_limits<knn_dist_T>::max_val() : dist;
+            chunk_idx[k] = (knn_idx_T)j;
+        }
+
+        dist_stream.write(chunk_dist);
+        idx_stream.write(chunk_idx);
+    }
+}
+
 template <class coords_T, class coords_diff_T, class knn_dist_T, class knn_idx_T, typename CONFIG_T>
 void calculate_distances(
     typename coords_T::value_type coords_buffer[CONFIG_T::V][CONFIG_T::S],
@@ -57,41 +113,21 @@ void calculate_distances(
     hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> idx_streams[CONFIG_T::V / CONFIG_T::n_neighbours]) {
 
 #pragma HLS ARRAY_PARTITION variable = coords_buffer dim = 0 complete
+
     constexpr unsigned int num_chunks = CONFIG_T::V / CONFIG_T::n_neighbours;
+    typedef nnet::array<typename coords_T::value_type, CONFIG_T::S> query_coord_T;
 
-VertexLoop:
-    for (unsigned int i = 0; i < CONFIG_T::V; i++) {
-#pragma HLS PIPELINE II = 1
+    hls::stream<query_coord_T> query_coord_streams[num_chunks];
+#pragma HLS STREAM variable = query_coord_streams depth = 2
 
-        nnet::array<knn_dist_T, CONFIG_T::n_neighbours> chunks_dist[num_chunks];
-        nnet::array<knn_idx_T, CONFIG_T::n_neighbours> chunks_idx[num_chunks];
-#pragma HLS ARRAY_PARTITION variable = chunks_dist complete
-#pragma HLS ARRAY_PARTITION variable = chunks_idx complete
+#pragma HLS DATAFLOW
 
-    TargetLoop_L:
-        for (unsigned int L = 0; L < num_chunks; L++) {
+    broadcast_centers<query_coord_T, coords_T, CONFIG_T>(coords_buffer, query_coord_streams);
+
+    for (unsigned int L = 0; L < num_chunks; L++) {
 #pragma HLS UNROLL
-        TargetLoop_k:
-            for (unsigned int k = 0; k < CONFIG_T::n_neighbours; k++) {
-#pragma HLS UNROLL
-                unsigned int j = L * CONFIG_T::n_neighbours + k;
-
-                knn_dist_T dist = 0;
-                for (unsigned int s = 0; s < CONFIG_T::S; s++) {
-#pragma HLS UNROLL
-                    dist += CONFIG_T::template distance_fn<typename coords_T::value_type, knn_dist_T, coords_diff_T>::dist(
-                        coords_buffer[i][s], coords_buffer[j][s]);
-                }
-
-                chunks_dist[L][k] = (i == j) ? gravnet_core_limits<knn_dist_T>::max_val() : dist;
-                chunks_idx[L][k] = (knn_idx_T)j;
-            }
-        }
-        for (unsigned int L = 0; L < num_chunks; L++) {
-#pragma HLS UNROLL
-            dist_streams[L].write(chunks_dist[L]);
-            idx_streams[L].write(chunks_idx[L]);
-        }
+        compute_chunk<query_coord_T, coords_T, coords_diff_T, knn_dist_T, knn_idx_T, CONFIG_T>(
+            L, coords_buffer, query_coord_streams[L], dist_streams[L], idx_streams[L]);
     }
 }
 

@@ -1,4 +1,4 @@
-def set_qgravnet_hls_config(hls_config: dict):
+def set_gravnet_hls_config(hls_config: dict):
     hls_config['Model']['Precision'] = {'default': 'ap_fixed<16,8,AP_RND,AP_SAT>', 'maximum': 'ap_fixed<16,8,AP_RND,AP_SAT>'}
     hls_config['Model']['Strategy'] = 'Latency'
 
@@ -15,14 +15,17 @@ def set_qgravnet_hls_config(hls_config: dict):
             hls_config['LayerName'][layer]['Precision']['weight'] = 'ap_fixed<8,1,AP_RND,AP_SAT>'
             hls_config['LayerName'][layer]['Precision']['bias'] = 'ap_fixed<8,1,AP_RND,AP_SAT>'
 
-    hls_config['LayerName']['global_avg_pool']['Precision']['accum'] = 'ap_fixed<22,12>'
+        if 'gex' in layer:
+            hls_config['LayerName'][layer]['Precision']['mean'] = 'ap_fixed<16,12,AP_RND,AP_SAT>'
+
+    hls_config['LayerName']['global_avg_pool']['Precision']['accum'] = 'ap_fixed<22,16>'
 
 
 def set_converter_opts(converter_opts: dict, backend: str = 'Vitis'):
+    converter_opts['io_type'] = 'io_stream'
     if backend == 'Vitis':
         pass  # Leave defaults
     elif backend == 'CoyoteAccelerator':
-        converter_opts['io_type'] = 'io_parallel'
         converter_opts['clock_period'] = 4
 
 
@@ -35,6 +38,7 @@ def get_build_opts(backend: str = 'Vitis') -> dict:
         'validation': True,
     }
     if backend == 'CoyoteAccelerator':
+        build_opts['hls_clock_period'] = 5
         build_opts['csynth'] = True
         build_opts['timing_opt'] = True
         build_opts['bitfile'] = True

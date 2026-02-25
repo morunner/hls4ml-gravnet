@@ -2,22 +2,37 @@ import argparse
 import json
 import os
 import pickle
+from pprint import pformat
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        prog='TrainGravNet',
+        description='Train the GravNet model',
+    )
+    parser.add_argument('output_dir')
+    parser.add_argument('--mini', action='store_true', help='Use a smaller dataset for quick testing')
+    parser.add_argument('--num-vertices', type=int, default=128, help='Number of vertices to use')
+    parser.add_argument('--shuffle-vertices', action='store_true', help='Shuffle vertices before training')
+
+    return parser.parse_args()
+args = parse_args()
+
+# Heavy imports, delayed until after argument parsing
 
 import numpy as np
 from keras.optimizers import AdamW
-from qgravnet import QGravNetFactory
-
-from hls4ml_gravnet.utils.config import keras_model_cfg
-from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices, truncate_or_pad_vertices
-from hls4ml_gravnet.utils.evaluation import response_rmse
-from hls4ml_gravnet.utils.files import DATASET_PATH, RESULTS_PATH
 
 try:
     import keras
 except ImportError:
     from tensorflow import keras
 
-DATA_FILE = DATASET_PATH / 'toy_calo/toy_calo_processed.h5'
+from qgravnet import QGravNetFactory
+
+from hls4ml_gravnet.utils.config import keras_model_cfg
+from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices, truncate_or_pad_vertices
+from hls4ml_gravnet.utils.evaluation import response_rmse
+from hls4ml_gravnet.utils.files import DATASET_PATH, RESULTS_PATH
 
 optimizer_cfg = {
     'optimizer': AdamW(learning_rate=5e-4, weight_decay=1e-5),
@@ -33,19 +48,6 @@ callbacks = [
 
 n_epochs = 500
 batch_size = 32
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        prog='TrainGravNet',
-        description='Train the GravNet model',
-    )
-    parser.add_argument('output_dir')
-    parser.add_argument('--num-vertices', type=int, default=128, help='Number of vertices to use')
-    parser.add_argument('--shuffle-vertices', action='store_true', help='Shuffle vertices before training')
-
-    return parser.parse_args()
-
 
 def main():
     args = parse_args()

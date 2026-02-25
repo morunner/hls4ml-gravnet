@@ -2,6 +2,10 @@ import argparse
 import os
 import logging
 
+parser = argparse.ArgumentParser(description="Evaluate a trained QGravNet model.")
+parser.add_argument("run", type=str, help="The name of the training run to evaluate.")
+args = parser.parse_args()
+
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score, roc_curve
@@ -20,10 +24,6 @@ logger = logging.getLogger("eval")
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Evaluate a trained QGravNet model.")
-    parser.add_argument("run", type=str, help="The name of the training run to evaluate.")
-    args = parser.parse_args()
-
     model_cfg, weights_path, history, datapath, n_vertices, is_shuffled = load_run(PROJECT_ROOT / "data/results/" / args.run)
     D = load_processed(datapath)
     trained_model = QGravNetFactory(**model_cfg).create_keras_model(n_vertices, 4)

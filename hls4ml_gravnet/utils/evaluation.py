@@ -27,7 +27,6 @@ except ImportError:
         response = tf.math.divide_no_nan(y_pred, y_true)
         return tf.sqrt(tf.reduce_mean(tf.square(response - 1.0)))
 
-
 def response_rmse_numpy(y_true, y_pred):
     y_true = np.array(y_true).flatten()
     y_pred = np.array(y_pred).flatten()
@@ -40,6 +39,14 @@ def response_rmse_numpy(y_true, y_pred):
 
     return np.sqrt(np.mean((response - 1.0) ** 2))
 
+def get_model_coord_layers(model):
+    coord_layers = [
+        l for l in model.layers
+        if l.name.startswith("qgnblock_") and l.name.endswith("_input_spatial_transform")
+    ]
+    coord_layers.sort(key=lambda l: int(l.name.split("_")[1]))  # qgnblock_{i}_...
+    assert len(coord_layers) > 0, "No coordinate layers found in model. Check layer naming."
+    return coord_layers
 
 def load_run(train_dir):
     """

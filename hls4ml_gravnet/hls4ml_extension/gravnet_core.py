@@ -57,7 +57,7 @@ class HGravNetCore(Layer):
         self.set_attr('exp_table_indexing_shmt', exp_table_indexing_shmt)
         self.set_attr('exp_table_idx_t', IntegerPrecisionType(width=exp_table_size_nbits, signed=False))
 
-        knn_idx_bits = ceil(log2(n_vertices + 1))
+        knn_idx_bits = ceil(log2(n_vertices))
         self.set_attr('knn_idx_t', IntegerPrecisionType(width=knn_idx_bits, signed=False))
         self._set_type_t('coords_diff')
         self._set_type_t('exp_table')

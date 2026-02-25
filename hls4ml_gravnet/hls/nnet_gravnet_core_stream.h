@@ -2,225 +2,211 @@
 #define NNET_GRAVNET_CORE_STREAM_H_
 
 #include "hls_stream.h"
-#include "nnet_gravnet_bitonic_sort.h"
 #include "nnet_gravnet_bitonic_sort_stream.h"
 #include "nnet_gravnet_core_common.h"
 #include "nnet_types.h"
 
 namespace nnet {
 
-template <unsigned n_iterations, unsigned n_pack, class coords_T, class feats_T, class coord_val_T, class feat_val_T,
-          typename CONFIG_T>
+template <typename CONFIG_T, class coords_T, class feats_T>
+void buffer_inputs(hls::stream<coords_T> &coords_in, hls::stream<feats_T> &feats_in, hls::stream<coords_T> &coords_out,
+                   hls::stream<feats_T> &feats_out) {
+#pragma HLS INLINE off
+    for (unsigned int i = 0; i < CONFIG_T::V; i++) {
+#pragma HLS PIPELINE II = 1
+        coords_out.write(coords_in.read());
+        feats_out.write(feats_in.read());
+    }
+}
+
+template <class coords_T, class feats_T, class coord_val_T, class feat_val_T, typename CONFIG_T>
 void read_inputs(hls::stream<coords_T> &coords_stream, hls::stream<feats_T> &feats_stream,
                  coord_val_T coords_buffer[CONFIG_T::V][CONFIG_T::S],
-                 feat_val_T feats_buffer[n_pack][CONFIG_T::n_neighbours][n_pack][n_iterations][CONFIG_T::F]) {
+                 feat_val_T feats_buffer[CONFIG_T::n_neighbours][CONFIG_T::V][CONFIG_T::F]) {
 #pragma HLS INLINE off
 
 ReadLoop:
-    for (unsigned int i = 0; i < n_iterations; i++) {
+    for (unsigned int i = 0; i < CONFIG_T::V; i++) {
 #pragma HLS PIPELINE II = 1
 
-        coords_T c_pack = coords_stream.read();
-        feats_T f_pack = feats_stream.read();
+        coords_T coord = coords_stream.read();
+        feats_T feat = feats_stream.read();
 
-    UnpackLoop:
-        for (unsigned int p = 0; p < n_pack; p++) {
+        for (unsigned int s = 0; s < CONFIG_T::S; s++) {
 #pragma HLS UNROLL
-            unsigned int v_idx = i * n_pack + p;
+            coords_buffer[i][s] = coord[s];
+        }
 
-            for (unsigned int s = 0; s < CONFIG_T::S; s++) {
+        for (unsigned int f = 0; f < CONFIG_T::F; f++) {
 #pragma HLS UNROLL
-                coords_buffer[v_idx][s] = c_pack[p * CONFIG_T::S + s];
-            }
+            feat_val_T val = feat[f];
 
-            for (unsigned int f = 0; f < CONFIG_T::F; f++) {
+            for (unsigned int n_read = 0; n_read < CONFIG_T::n_neighbours; n_read++) {
 #pragma HLS UNROLL
-                feat_val_T val = f_pack[p * CONFIG_T::F + f];
-
-                for (unsigned int p_read = 0; p_read < n_pack; p_read++) {
-#pragma HLS UNROLL
-                    for (unsigned int n_read = 0; n_read < CONFIG_T::n_neighbours; n_read++) {
-#pragma HLS UNROLL
-                        feats_buffer[p_read][n_read][p][i][f] = val;
-                    }
-                }
+                feats_buffer[n_read][i][f] = val;
             }
         }
     }
 }
 
-template <unsigned n_iterations, unsigned n_pack, class coords_T, class coords_diff_T, class knn_dist_T, class knn_idx_T,
-          typename CONFIG_T>
+template <class coords_T, class coords_diff_T, class knn_dist_T, class knn_idx_T, typename CONFIG_T>
 void calculate_distances(
     typename coords_T::value_type coords_buffer[CONFIG_T::V][CONFIG_T::S],
-    hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> dist_streams[n_pack][CONFIG_T::V / CONFIG_T::n_neighbours],
-    hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> idx_streams[n_pack][CONFIG_T::V / CONFIG_T::n_neighbours]) {
-
+    hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> dist_streams[CONFIG_T::V / CONFIG_T::n_neighbours],
+    hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> idx_streams[CONFIG_T::V / CONFIG_T::n_neighbours]) {
 #pragma HLS ARRAY_PARTITION variable = coords_buffer dim = 0 complete
 
-VertexLoop:
-    for (unsigned int i = 0; i < n_iterations; i++) {
+    constexpr unsigned int num_leaves = CONFIG_T::V / CONFIG_T::n_neighbours;
+
+    for (unsigned int i = 0; i < CONFIG_T::V; i++) {
 #pragma HLS PIPELINE II = 1
 
-    PackLoop:
-        for (unsigned int p = 0; p < n_pack; p++) {
+        nnet::array<knn_dist_T, CONFIG_T::n_neighbours> leaf_dists[num_leaves];
+        nnet::array<knn_idx_T, CONFIG_T::n_neighbours> leaf_idxs[num_leaves];
+#pragma HLS ARRAY_PARTITION variable = leaf_dists complete
+#pragma HLS ARRAY_PARTITION variable = leaf_idxs complete
+
+        for (unsigned int l = 0; l < num_leaves; l++) {
 #pragma HLS UNROLL
-
-            unsigned int u_idx = i * n_pack + p;
-            typename coords_T::value_type query_coords[CONFIG_T::S];
-#pragma HLS ARRAY_PARTITION variable = query_coords complete
-
-            for (unsigned int s = 0; s < CONFIG_T::S; s++) {
+            for (unsigned int k = 0; k < CONFIG_T::n_neighbours; k++) {
 #pragma HLS UNROLL
-                query_coords[s] = coords_buffer[u_idx][s];
-            }
-
-            nnet::array<knn_dist_T, CONFIG_T::n_neighbours> chunks_dist[CONFIG_T::V / CONFIG_T::n_neighbours];
-            nnet::array<knn_idx_T, CONFIG_T::n_neighbours> chunks_idx[CONFIG_T::V / CONFIG_T::n_neighbours];
-#pragma HLS ARRAY_PARTITION variable = chunks_dist complete
-#pragma HLS ARRAY_PARTITION variable = chunks_idx complete
-
-        TargetLoop:
-            for (unsigned int j = 0; j < CONFIG_T::V; j++) {
-#pragma HLS UNROLL
-                unsigned int L = j / CONFIG_T::n_neighbours;
-                unsigned int k = j % CONFIG_T::n_neighbours;
+                unsigned int j = l * CONFIG_T::n_neighbours + k;
 
                 knn_dist_T dist = 0;
                 for (unsigned int s = 0; s < CONFIG_T::S; s++) {
 #pragma HLS UNROLL
                     dist += CONFIG_T::template distance_fn<typename coords_T::value_type, knn_dist_T, coords_diff_T>::dist(
-                        query_coords[s], coords_buffer[j][s]);
+                        coords_buffer[i][s], coords_buffer[j][s]);
                 }
 
-                if (u_idx == j)
-                    dist = gravnet_core_limits<knn_dist_T>::max_val();
-
-                chunks_dist[L][k] = dist;
-                chunks_idx[L][k] = (knn_idx_T)j;
+                leaf_dists[l][k] = (i == j) ? gravnet_core_limits<knn_dist_T>::max_val() : dist;
+                leaf_idxs[l][k] = (knn_idx_T)j;
             }
-
-            for (unsigned int L = 0; L < (CONFIG_T::V / CONFIG_T::n_neighbours); L++) {
+        }
+        for (unsigned int L = 0; L < num_leaves; L++) {
 #pragma HLS UNROLL
-                dist_streams[p][L].write(chunks_dist[L]);
-                idx_streams[p][L].write(chunks_idx[L]);
-            }
+            dist_streams[L].write(leaf_dists[L]);
+            idx_streams[L].write(leaf_idxs[L]);
         }
     }
 }
 
-template <unsigned n_iterations, unsigned n_pack, class feat_val_T, class output_T, class accum_T, class knn_dist_T,
-          class knn_idx_T, class exp_table_T, class exp_table_idx_T, class weighted_feature_T, typename CONFIG_T>
-void apply_weights_and_reduce(hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> knn_dists[n_pack],
-                              hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> knn_indices[n_pack],
-                              feat_val_T feats_buffer[n_pack][CONFIG_T::n_neighbours][n_pack][n_iterations][CONFIG_T::F],
-                              exp_table_T exp_table[CONFIG_T::exp_table_size], hls::stream<output_T> &res_stream) {
-    accum_T acc_sum[n_pack][CONFIG_T::F];
-    accum_T acc_max[n_pack][CONFIG_T::F];
+template <class feat_val_T, class output_T, class accum_T, class knn_dist_T, class knn_idx_T, class exp_table_T,
+          class exp_table_idx_T, class weighted_feature_T, typename CONFIG_T>
+void apply_weights_and_reduce(hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> &knn_dists,
+                              hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> &knn_indices,
+                              feat_val_T feats_buffer[CONFIG_T::n_neighbours][CONFIG_T::V][CONFIG_T::F],
+                              exp_table_T exp_table[CONFIG_T::exp_table_size], hls::stream<output_T> &out_stream) {
+    accum_T acc_sum[CONFIG_T::F];
+    accum_T acc_max[CONFIG_T::F];
 #pragma HLS ARRAY_PARTITION variable = acc_sum complete dim = 0
 #pragma HLS ARRAY_PARTITION variable = acc_max complete dim = 0
 
 ReduceVertexLoop:
-    for (unsigned int i = 0; i < n_iterations; i++) {
+    for (unsigned int i = 0; i < CONFIG_T::V; i++) {
 #pragma HLS PIPELINE II = 1
 
-        output_T out_pack;
+        output_T out;
 
-    ReducePackLoop:
-        for (unsigned int p = 0; p < n_pack; p++) {
+        for (int f = 0; f < CONFIG_T::F; f++) {
 #pragma HLS UNROLL
-            for (int f = 0; f < CONFIG_T::F; f++) {
+            acc_sum[f] = 0;
+            acc_max[f] = gravnet_core_limits<accum_T>::min_val();
+        }
+
+        nnet::array<knn_dist_T, CONFIG_T::n_neighbours> dists = knn_dists.read();
+        nnet::array<knn_idx_T, CONFIG_T::n_neighbours> indices = knn_indices.read();
+
+        for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
 #pragma HLS UNROLL
-                acc_sum[p][f] = 0;
-                acc_max[p][f] = gravnet_core_limits<accum_T>::min_val();
-            }
+            knn_dist_T d = dists[n];
+            unsigned int idx = indices[n];
 
-            nnet::array<knn_dist_T, CONFIG_T::n_neighbours> dists = knn_dists[p].read();
-            nnet::array<knn_idx_T, CONFIG_T::n_neighbours> indices = knn_indices[p].read();
+            unsigned int table_idx = gravnet_idx_from_real_val<knn_dist_T, exp_table_idx_T, CONFIG_T>(d);
+            exp_table_T w = exp_table[table_idx];
 
-            for (unsigned int n = 0; n < CONFIG_T::n_neighbours; n++) {
-#pragma HLS UNROLL
-                knn_dist_T d = dists[n];
-                unsigned int idx = indices[n];
-
-                unsigned int read_i = idx / n_pack;
-                unsigned int read_p = idx % n_pack;
-
-                unsigned int table_idx = gravnet_idx_from_real_val<knn_dist_T, exp_table_idx_T, CONFIG_T>(d);
-                exp_table_T w = exp_table[table_idx];
-
-                for (unsigned int f = 0; f < CONFIG_T::F; f++) {
-#pragma HLS UNROLL
-                    feat_val_T feat = feats_buffer[p][n][read_p][read_i][f];
-                    weighted_feature_T val = (weighted_feature_T)(feat * w);
-
-                    acc_sum[p][f] += val;
-                    if (val > acc_max[p][f]) {
-                        acc_max[p][f] = val;
-                    }
-                }
-            }
-
-            unsigned int pack_offset = p * 2 * CONFIG_T::F;
             for (unsigned int f = 0; f < CONFIG_T::F; f++) {
 #pragma HLS UNROLL
-                out_pack[pack_offset + f] = acc_max[p][f];
-                out_pack[pack_offset + CONFIG_T::F + f] = acc_sum[p][f] / (accum_T)CONFIG_T::n_neighbours;
+                feat_val_T feat = feats_buffer[n][idx][f];
+                weighted_feature_T val = (weighted_feature_T)(feat * w);
+
+                acc_sum[f] += val;
+                if (val > acc_max[f]) {
+                    acc_max[f] = val;
+                }
             }
         }
-        res_stream.write(out_pack);
+
+        for (unsigned int f = 0; f < CONFIG_T::F; f++) {
+#pragma HLS UNROLL
+            out[f] = acc_max[f];
+            out[CONFIG_T::F + f] = acc_sum[f] / (accum_T)CONFIG_T::n_neighbours;
+        }
+        out_stream.write(out);
     }
 }
 
 template <class coords_T, class feats_T, class output_T, class accum_T, class coords_diff_T, class knn_dist_T,
           class knn_idx_T, class exp_table_T, class exp_table_idx_T, class weighted_feature_T, typename CONFIG_T>
 void gravnet_core(hls::stream<coords_T> &coords_stream, hls::stream<feats_T> &feats_stream,
-                  hls::stream<output_T> &res_stream) {
+                  hls::stream<output_T> &out_stream) {
 #pragma HLS DATAFLOW
 
-    constexpr unsigned n_pack = coords_T::size / CONFIG_T::S;
-    constexpr unsigned n_iterations = CONFIG_T::V / n_pack;
     constexpr unsigned num_leaves = CONFIG_T::V / CONFIG_T::n_neighbours;
 
     typedef typename coords_T::value_type coord_val_t;
     typedef typename feats_T::value_type feat_val_t;
 
+    hls::stream<coords_T> coords_stream_bram;
+    hls::stream<feats_T> feats_stream_bram;
+#pragma HLS STREAM variable = coords_stream_bram depth = 64
+#pragma HLS BIND_STORAGE variable = coords_stream_bram type = fifo impl = bram
+#pragma HLS STREAM variable = feats_stream_bram depth = 64
+#pragma HLS BIND_STORAGE variable = feats_stream_bram type = fifo impl = bram
+
+    hls::stream<coords_T> coords_stream_srl;
+    hls::stream<feats_T> feats_stream_srl;
+#pragma HLS STREAM variable = coords_stream_srl depth = 2
+#pragma HLS BIND_STORAGE variable = coords_stream_srl type = fifo impl = srl
+#pragma HLS STREAM variable = feats_stream_srl depth = 2
+#pragma HLS BIND_STORAGE variable = feats_stream_srl type = fifo impl = srl
+
     coord_val_t coords_buffer[CONFIG_T::V][CONFIG_T::S];
 #pragma HLS ARRAY_PARTITION variable = coords_buffer complete dim = 0
 
-    feat_val_t feats_buffer[n_pack][CONFIG_T::n_neighbours][n_pack][n_iterations][CONFIG_T::F];
+    feat_val_t feats_buffer[CONFIG_T::n_neighbours][CONFIG_T::V][CONFIG_T::F];
 #pragma HLS BIND_STORAGE variable = feats_buffer type = ram_2p impl = bram
 #pragma HLS ARRAY_PARTITION variable = feats_buffer complete dim = 1
-#pragma HLS ARRAY_PARTITION variable = feats_buffer complete dim = 2
 #pragma HLS ARRAY_PARTITION variable = feats_buffer complete dim = 3
-#pragma HLS ARRAY_PARTITION variable = feats_buffer complete dim = 5
 
     static exp_table_T exp_table[CONFIG_T::exp_table_size];
 #pragma HLS ARRAY_PARTITION variable = exp_table complete
     gravnet_init_exp_table<exp_table_T, CONFIG_T>(exp_table);
 
-    hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> dist_streams[n_pack][num_leaves];
-    hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> idx_streams[n_pack][num_leaves];
+    hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> dist_streams[num_leaves];
+    hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> idx_streams[num_leaves];
 #pragma HLS STREAM variable = dist_streams depth = 16
 #pragma HLS STREAM variable = idx_streams depth = 16
 
-    hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> knn_dists[n_pack];
-    hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> knn_indices[n_pack];
+    hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_neighbours>> knn_dists;
+    hls::stream<nnet::array<knn_idx_T, CONFIG_T::n_neighbours>> knn_indices;
 #pragma HLS STREAM variable = knn_dists depth = 16
 #pragma HLS STREAM variable = knn_indices depth = 16
 
-    read_inputs<n_iterations, n_pack, coords_T, feats_T, coord_val_t, feat_val_t, CONFIG_T>(coords_stream, feats_stream,
-                                                                                            coords_buffer, feats_buffer);
+    buffer_inputs<CONFIG_T, coords_T, feats_T>(coords_stream, feats_stream, coords_stream_bram, feats_stream_bram);
 
-    calculate_distances<n_iterations, n_pack, coords_T, coords_diff_T, knn_dist_T, knn_idx_T, CONFIG_T>(
-        coords_buffer, dist_streams, idx_streams);
+    buffer_inputs<CONFIG_T, coords_T, feats_T>(coords_stream_bram, feats_stream_bram, coords_stream_srl, feats_stream_srl);
 
-    select_knn_tree<n_iterations, n_pack, knn_dist_T, knn_idx_T, CONFIG_T>(dist_streams, idx_streams, knn_dists,
-                                                                           knn_indices);
+    read_inputs<coords_T, feats_T, coord_val_t, feat_val_t, CONFIG_T>(coords_stream_srl, feats_stream_srl, coords_buffer,
+                                                                      feats_buffer);
 
-    apply_weights_and_reduce<n_iterations, n_pack, feat_val_t, output_T, accum_T, knn_dist_T, knn_idx_T, exp_table_T,
-                             exp_table_idx_T, weighted_feature_T, CONFIG_T>(knn_dists, knn_indices, feats_buffer, exp_table,
-                                                                            res_stream);
+    calculate_distances<coords_T, coords_diff_T, knn_dist_T, knn_idx_T, CONFIG_T>(coords_buffer, dist_streams, idx_streams);
+
+    select_knn_tree<knn_dist_T, knn_idx_T, CONFIG_T>(dist_streams, idx_streams, knn_dists, knn_indices);
+
+    apply_weights_and_reduce<feat_val_t, output_T, accum_T, knn_dist_T, knn_idx_T, exp_table_T, exp_table_idx_T,
+                             weighted_feature_T, CONFIG_T>(knn_dists, knn_indices, feats_buffer, exp_table, out_stream);
 }
+
 } // namespace nnet
 #endif

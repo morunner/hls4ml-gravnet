@@ -1,8 +1,8 @@
 #ifndef NNET_GLOBAL_EXCHANGE_STREAM_H_
 #define NNET_GLOBAL_EXCHANGE_STREAM_H_
 
+#include "ap_fixed.h"
 #include "hls_stream.h"
-#include "nnet_common.h"
 #include "nnet_types.h"
 
 namespace nnet {
@@ -25,18 +25,15 @@ void compute_stats(hls::stream<input_T> &data_in, hls::stream<input_T> &data_for
 #pragma HLS ARRAY_PARTITION variable = min_val.data complete
 #pragma HLS ARRAY_PARTITION variable = max_val.data complete
 
-ReadLoop:
     for (unsigned int v = 0; v < n_iterations; v++) {
 #pragma HLS PIPELINE II = 1
 
         input_T curr_packet = data_in.read();
         data_forward.write(curr_packet);
 
-    ProcessPack:
         for (unsigned int p = 0; p < n_pack; p++) {
 #pragma HLS UNROLL
 
-        UpdateStats:
             for (unsigned int f = 0; f < CONFIG_T::F; f++) {
 #pragma HLS UNROLL
                 data_T val = curr_packet[p * CONFIG_T::F + f];
@@ -86,7 +83,6 @@ WriteLoop:
 
         input_T in_packet = data_forward.read();
         output_T out_packet;
-        PRAGMA_DATA_PACK(out_packet)
 
     ConstructPack:
         for (unsigned int p = 0; p < n_pack; p++) {

@@ -8,10 +8,10 @@
 
 namespace nnet {
 
-constexpr int exact_log2(int x) { return (x <= 1) ? 0 : 1 + exact_log2(x / 2); }
+constexpr int log2(int x) { return (x <= 1) ? 0 : 1 + log2(x / 2); }
 
 template <unsigned V, unsigned K, class dist_T, class idx_T>
-void sort_chunk_node(hls::stream<nnet::array<dist_T, K>> &dist_in, hls::stream<nnet::array<idx_T, K>> &idx_in,
+void sort_node_array(hls::stream<nnet::array<dist_T, K>> &dist_in, hls::stream<nnet::array<idx_T, K>> &idx_in,
                      hls::stream<nnet::array<dist_T, K>> &dist_out, hls::stream<nnet::array<idx_T, K>> &idx_out) {
     for (unsigned int i = 0; i < V; i++) {
 #pragma HLS PIPELINE II = 1
@@ -27,9 +27,12 @@ void sort_chunk_node(hls::stream<nnet::array<dist_T, K>> &dist_in, hls::stream<n
 }
 
 template <unsigned V, unsigned K, class dist_T, class idx_T>
-void merge_chunk_node(hls::stream<nnet::array<dist_T, K>> &left_dist_in, hls::stream<nnet::array<idx_T, K>> &left_idx_in,
-                      hls::stream<nnet::array<dist_T, K>> &right_dist_in, hls::stream<nnet::array<idx_T, K>> &right_idx_in,
-                      hls::stream<nnet::array<dist_T, K>> &dist_out, hls::stream<nnet::array<idx_T, K>> &idx_out) {
+void merge_node_arrays_and_keep_k(hls::stream<nnet::array<dist_T, K>> &left_dist_in,
+                                  hls::stream<nnet::array<idx_T, K>> &left_idx_in,
+                                  hls::stream<nnet::array<dist_T, K>> &right_dist_in,
+                                  hls::stream<nnet::array<idx_T, K>> &right_idx_in,
+                                  hls::stream<nnet::array<dist_T, K>> &dist_out,
+                                  hls::stream<nnet::array<idx_T, K>> &idx_out) {
     for (unsigned int i = 0; i < V; i++) {
 #pragma HLS PIPELINE II = 1
         nnet::array<dist_T, K> left_d = left_dist_in.read();
@@ -57,31 +60,32 @@ void select_knn_tree(hls::stream<nnet::array<dist_T, CONFIG_T::n_neighbours>> di
     constexpr int V = CONFIG_T::V;
     constexpr int K = CONFIG_T::n_neighbours;
     constexpr int num_leaves = CONFIG_T::V / K;
-    constexpr int S = exact_log2(num_leaves);
+    constexpr int tree_depth = log2(num_leaves);
 
-    hls::stream<nnet::array<dist_T, K>> dist_streams[S + 1][num_leaves];
-    hls::stream<nnet::array<idx_T, K>> idx_streams[S + 1][num_leaves];
+    hls::stream<nnet::array<dist_T, K>> dist_streams[tree_depth + 1][num_leaves];
+    hls::stream<nnet::array<idx_T, K>> idx_streams[tree_depth + 1][num_leaves];
 #pragma HLS STREAM variable = dist_streams depth = 2
 #pragma HLS STREAM variable = idx_streams depth = 2
 
-    for (int s = 0; s < S + 1; s++) {
+    for (int s = 0; s < tree_depth + 1; s++) {
 #pragma HLS UNROLL
         if (s == 0) {
             for (int n = 0; n < num_leaves; n++) {
 #pragma HLS UNROLL
-                sort_chunk_node<V, K, dist_T, idx_T>(dist_in[n], idx_in[n], dist_streams[s][n], idx_streams[s][n]);
+                sort_node_array<V, K, dist_T, idx_T>(dist_in[n], idx_in[n], dist_streams[s][n], idx_streams[s][n]);
             }
-        } else if (s < S) {
+        } else if (s < tree_depth) {
             int nodes_this_level = num_leaves >> s;
             for (int n = 0; n < nodes_this_level; n++) {
 #pragma HLS UNROLL
-                merge_chunk_node<V, K, dist_T, idx_T>(dist_streams[s - 1][2 * n], idx_streams[s - 1][2 * n],
-                                                      dist_streams[s - 1][2 * n + 1], idx_streams[s - 1][2 * n + 1],
-                                                      dist_streams[s][n], idx_streams[s][n]);
+                merge_node_arrays_and_keep_k<V, K, dist_T, idx_T>(
+                    dist_streams[s - 1][2 * n], idx_streams[s - 1][2 * n], dist_streams[s - 1][2 * n + 1],
+                    idx_streams[s - 1][2 * n + 1], dist_streams[s][n], idx_streams[s][n]);
             }
         } else {
-            merge_chunk_node<V, K, dist_T, idx_T>(dist_streams[s - 1][0], idx_streams[s - 1][0], dist_streams[s - 1][1],
-                                                  idx_streams[s - 1][1], dist_out, idx_out);
+            merge_node_arrays_and_keep_k<V, K, dist_T, idx_T>(dist_streams[s - 1][0], idx_streams[s - 1][0],
+                                                              dist_streams[s - 1][1], idx_streams[s - 1][1], dist_out,
+                                                              idx_out);
         }
     }
 }

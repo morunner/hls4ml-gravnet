@@ -9,7 +9,7 @@ import tensorflow_model_optimization as tfmot
 from keras.layers import Dense
 from keras.models import clone_model
 from qkeras.utils import get_model_sparsity
-from qgravnet import QGravNetFactory
+from qgravnet import QGravNetFactory, GravNetFactory
 
 from train import batch_size, callbacks, n_epochs, optimizer_cfg
 from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices, truncate_or_pad_vertices
@@ -70,9 +70,11 @@ def main():
     model_cfg, _, _, datapath = load_run(train_dir=train_dir)
 
     model_cfg, weights_path, history, datapath, n_vertices, is_shuffled = load_run(input_dir)
+    info = json.load(open(input_dir / 'info.json'))
     D = load_processed(datapath)
 
-    pretrained_model = QGravNetFactory(**model_cfg).create_keras_model(n_vertices=n_vertices, n_features=4)
+    factory_cls = GravNetFactory if info.get('factory', 'QGravNetFactory') == 'GravNetFactory' else QGravNetFactory
+    pretrained_model = factory_cls(**model_cfg).create_keras_model(n_vertices=n_vertices, n_features=4)
     pretrained_model.load_weights(weights_path)
 
     steps_per_epoch = ceil(len(D['X_hits_train']) / batch_size)
@@ -147,6 +149,8 @@ def main():
             'pruning_epochs': n_pruning_epochs,
             'batch_size': batch_size,
             'sparsity': args.sparsity,
+            'is_shuffled': is_shuffled,
+            'factory': factory_cls.__name__,
         }
         json.dump(info, f, indent=2)
 

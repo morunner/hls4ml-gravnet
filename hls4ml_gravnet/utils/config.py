@@ -1,7 +1,14 @@
-from qkeras import quantized_bits, quantized_sigmoid, quantized_tanh
+import keras.activations as activations
+from qkeras import quantized_bits, quantized_sigmoid, quantized_tanh, quantized_relu
 
 quantizer = quantized_bits(8, 0, 1, alpha=1.0)
 act_quantizer = 'quantized_relu(12,4)'
+
+ACT_MAP = {
+    quantized_relu: activations.relu,
+    quantized_sigmoid: activations.sigmoid,
+    quantized_tanh: activations.tanh,
+}
 
 keras_model_cfg = {
     'n_blocks': 2,
@@ -52,3 +59,29 @@ keras_model_cfg = {
         'overflow_lambda': 1e-5,       # 0 disables
     },
 }
+
+
+def remove_quantization_from_config(obj):
+    """Recursively remove quantization-specific keys and convert quantizer objects to strings in a config dict."""
+    if isinstance(obj, dict):
+        new = {}
+
+        for k, v in obj.items():
+
+            if k.endswith("_quantizer"):
+                continue
+
+            if type(v) in ACT_MAP:
+                new[k] = ACT_MAP[type(v)]
+                continue
+
+            if isinstance(v, str) and v.startswith("quantized_"):
+                base = v.split("(")[0]
+                new[k] = getattr(activations, base.replace("quantized_", ""))
+                continue
+
+            new[k] = remove_quantization_from_config(v)
+
+        return new
+
+    return obj

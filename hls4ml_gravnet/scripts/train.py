@@ -1,4 +1,5 @@
 import argparse
+import copy
 import json
 import os
 import pickle
@@ -13,6 +14,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--mini', action='store_true', help='Use a smaller dataset for quick testing')
     parser.add_argument('--num-vertices', type=int, default=128, help='Number of vertices to use')
     parser.add_argument('--shuffle-vertices', action='store_true', help='Shuffle vertices before training')
+    parser.add_argument(
+        '--full-precision',
+        action='store_true',
+        help='Use full-precision GravNetFactory instead of QGravNetFactory',
+    )
 
     return parser.parse_args()
 args = parse_args()
@@ -27,7 +33,7 @@ try:
 except ImportError:
     from tensorflow import keras
 
-from qgravnet import QGravNetFactory
+from qgravnet import GravNetFactory, QGravNetFactory
 from qgravnet.selectors import BinnedSelector
 
 from hls4ml_gravnet.utils.config import keras_model_cfg
@@ -35,6 +41,7 @@ from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices, truncate
 from hls4ml_gravnet.utils.evaluation import response_rmse
 from hls4ml_gravnet.utils.files import DATASET_PATH, RESULTS_PATH
 from hls4ml_gravnet.utils.regularizers import add_overflow_regularization
+from hls4ml_gravnet.utils.config import remove_quantization_from_config
 
 optimizer_cfg = {
     'optimizer': AdamW(learning_rate=5e-4, weight_decay=1e-5),
@@ -56,11 +63,18 @@ def main():
     D = load_processed(DATA_FILE)
     energy_target = D['y_energy_train']
 
-    overflow_reg_cfg = keras_model_cfg.pop('overflow_regularization_cfg', None)
-    model = QGravNetFactory(**keras_model_cfg).create_keras_model(n_vertices=args.num_vertices, n_features=4)
+    model_cfg = copy.deepcopy(keras_model_cfg)
+    overflow_reg_cfg = model_cfg.pop('overflow_regularization_cfg', None)
+
+    factory_cls = GravNetFactory if args.full_precision else QGravNetFactory
+    factory_name = factory_cls.__name__
+    if args.full_precision:
+        model_cfg = remove_quantization_from_config(model_cfg)
+
+    model = factory_cls(**model_cfg).create_keras_model(n_vertices=args.num_vertices, n_features=4)
 
     if overflow_reg_cfg is not None:
-        selector = BinnedSelector(**keras_model_cfg['selector_cfg'])
+        selector = BinnedSelector(**model_cfg['selector_cfg'])
         add_overflow_regularization(
             model,
             selector,
@@ -91,9 +105,9 @@ def main():
     model.save(os.path.join(train_dir, f'{args.output_dir}.keras'))
 
     with open(os.path.join(train_dir, 'model_cfg.pkl'), 'wb') as f:
-        pickle.dump(keras_model_cfg, f)
+        pickle.dump(model_cfg, f)
     with open(os.path.join(train_dir, "model_cfg.txt"), "w") as f:
-        f.write(pformat(keras_model_cfg, sort_dicts=False))
+        f.write(pformat(model_cfg, sort_dicts=False))
 
     with open(os.path.join(train_dir, 'history.json'), 'w') as f:
         json.dump(history.history, f, default=lambda o: o.item() if isinstance(o, np.generic) else o)
@@ -104,7 +118,9 @@ def main():
             'n_vertices': args.num_vertices,
             'n_epochs': n_epochs,
             'batch_size': batch_size,
-            'shuffle_vertices': args.shuffle_vertices,
+            'is_shuffled': args.shuffle_vertices,
+            'full_precision': args.full_precision,
+            'factory': factory_name,
         }
         json.dump(info, f, indent=2)
 

@@ -1,5 +1,6 @@
 import argparse
 import os
+import json
 import logging
 
 parser = argparse.ArgumentParser(description="Evaluate a trained QGravNet model.")
@@ -16,7 +17,7 @@ from hls4ml_gravnet.utils.data import load_processed, shuffle_vertices, truncate
 from hls4ml_gravnet.utils.evaluation import load_run, response_rmse
 from hls4ml_gravnet.utils.files import get_project_root_dir
 
-from qgravnet import QGravNetFactory
+from qgravnet import QGravNetFactory, GravNetFactory
 
 PROJECT_ROOT = get_project_root_dir("hls4ml-gravnet")
 
@@ -25,8 +26,11 @@ logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
     model_cfg, weights_path, history, datapath, n_vertices, is_shuffled = load_run(PROJECT_ROOT / "data/results/" / args.run)
+    info = json.load(open(PROJECT_ROOT / "data/results/" / args.run / 'info.json'))
+    factory_cls = GravNetFactory if info.get('factory', 'QGravNetFactory') == 'GravNetFactory' else QGravNetFactory
+
     D = load_processed(datapath)
-    trained_model = QGravNetFactory(**model_cfg).create_keras_model(n_vertices, 4)
+    trained_model = factory_cls(**model_cfg).create_keras_model(n_vertices, 4)
     trained_model.load_weights(weights_path)
     # trained_model.summary()
 

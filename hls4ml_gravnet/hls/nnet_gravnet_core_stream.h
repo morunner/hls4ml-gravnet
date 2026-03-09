@@ -157,19 +157,12 @@ void gravnet_core(hls::stream<coords_T> &coords_stream, hls::stream<feats_T> &fe
     typedef typename coords_T::value_type coord_val_t;
     typedef typename feats_T::value_type feat_val_t;
 
-    hls::stream<coords_T> coords_stream_bram;
-    hls::stream<feats_T> feats_stream_bram;
-#pragma HLS STREAM variable = coords_stream_bram depth = 64
-#pragma HLS BIND_STORAGE variable = coords_stream_bram type = fifo impl = bram
-#pragma HLS STREAM variable = feats_stream_bram depth = 64
-#pragma HLS BIND_STORAGE variable = feats_stream_bram type = fifo impl = bram
-
-    hls::stream<coords_T> coords_stream_srl;
-    hls::stream<feats_T> feats_stream_srl;
-#pragma HLS STREAM variable = coords_stream_srl depth = 2
-#pragma HLS BIND_STORAGE variable = coords_stream_srl type = fifo impl = srl
-#pragma HLS STREAM variable = feats_stream_srl depth = 2
-#pragma HLS BIND_STORAGE variable = feats_stream_srl type = fifo impl = srl
+    hls::stream<coords_T> coords_stream_buffer;
+    hls::stream<feats_T> feats_stream_buffer;
+#pragma HLS STREAM variable = coords_stream_buffer depth = 2
+#pragma HLS BIND_STORAGE variable = coords_stream_buffer type = fifo impl = srl
+#pragma HLS STREAM variable = feats_stream_buffer depth = 2
+#pragma HLS BIND_STORAGE variable = feats_stream_buffer type = fifo impl = srl
 
     coord_val_t coords_buffer[CONFIG_T::V][CONFIG_T::S];
 #pragma HLS ARRAY_PARTITION variable = coords_buffer complete dim = 0
@@ -193,12 +186,10 @@ void gravnet_core(hls::stream<coords_T> &coords_stream, hls::stream<feats_T> &fe
 #pragma HLS STREAM variable = knn_dists depth = 16
 #pragma HLS STREAM variable = knn_indices depth = 16
 
-    buffer_inputs<CONFIG_T, coords_T, feats_T>(coords_stream, feats_stream, coords_stream_bram, feats_stream_bram);
+    buffer_inputs<CONFIG_T, coords_T, feats_T>(coords_stream, feats_stream, coords_stream_buffer, feats_stream_buffer);
 
-    buffer_inputs<CONFIG_T, coords_T, feats_T>(coords_stream_bram, feats_stream_bram, coords_stream_srl, feats_stream_srl);
-
-    read_inputs<coords_T, feats_T, coord_val_t, feat_val_t, CONFIG_T>(coords_stream_srl, feats_stream_srl, coords_buffer,
-                                                                      feats_buffer);
+    read_inputs<coords_T, feats_T, coord_val_t, feat_val_t, CONFIG_T>(coords_stream_buffer, feats_stream_buffer,
+                                                                      coords_buffer, feats_buffer);
 
     calculate_distances<coords_T, coords_diff_T, knn_dist_T, knn_idx_T, CONFIG_T>(coords_buffer, dist_streams, idx_streams);
 

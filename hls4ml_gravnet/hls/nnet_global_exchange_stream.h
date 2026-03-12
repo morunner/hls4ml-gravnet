@@ -7,6 +7,12 @@
 
 namespace nnet {
 
+struct global_exchange_config {
+    static const unsigned V = 128;
+    static const unsigned F = 8;
+    static const unsigned V_nbits = 7;
+};
+
 template <class input_T, class data_T, class mean_T, typename CONFIG_T>
 void compute_stats(hls::stream<input_T> &data_in, hls::stream<input_T> &data_forward,
                    hls::stream<nnet::array<mean_T, CONFIG_T::F>> &sum_stream,
@@ -116,12 +122,12 @@ void global_exchange(hls::stream<input_T> &data, hls::stream<output_T> &res) {
     constexpr unsigned n_pack = input_T::size / CONFIG_T::F;
 
     // Ensure a high enough depth for this fifo to prevent deadlocks
-    hls::stream<input_T> data_forward("gex_data_forward");
+    hls::stream<input_T> data_forward;
 #pragma HLS STREAM variable = data_forward depth = CONFIG_T::V / n_pack
 
-    hls::stream<nnet::array<mean_T, CONFIG_T::F>> sum_stream("gex_sum");
-    hls::stream<nnet::array<data_T, CONFIG_T::F>> min_stream("gex_min");
-    hls::stream<nnet::array<data_T, CONFIG_T::F>> max_stream("gex_max");
+    hls::stream<nnet::array<mean_T, CONFIG_T::F>> sum_stream;
+    hls::stream<nnet::array<data_T, CONFIG_T::F>> min_stream;
+    hls::stream<nnet::array<data_T, CONFIG_T::F>> max_stream;
 #pragma HLS STREAM variable = sum_stream depth = 1
 #pragma HLS STREAM variable = min_stream depth = 1
 #pragma HLS STREAM variable = max_stream depth = 1

@@ -103,7 +103,7 @@ def split_dataset(X_hits, X_size, y_energy, y_pid, test_size=0.25):
 
 
 def shuffle_vertices(X_hits, seed=None):
-    """ Shuffle the order of non-padded vertices independently for each event. """
+    """Shuffle the order of non-padded vertices independently for each event."""
     rng = np.random.default_rng(seed)
 
     N_events, V_max, _ = X_hits.shape
@@ -115,11 +115,7 @@ def shuffle_vertices(X_hits, seed=None):
 
     order = np.argsort(keys, axis=1)
 
-    return np.take_along_axis(
-        X_hits,
-        order[:, :, None],
-        axis=1
-    )
+    return np.take_along_axis(X_hits, order[:, :, None], axis=1)
 
 
 def truncate_or_pad_vertices(X_hits, n_vertices: int):
@@ -129,7 +125,7 @@ def truncate_or_pad_vertices(X_hits, n_vertices: int):
 
     N = min(N_existingVertices, n_vertices)
     result[:, :N, :] = X_hits[:, :N, :]
-    
+
     return result
 
 

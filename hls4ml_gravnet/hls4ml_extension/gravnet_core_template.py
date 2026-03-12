@@ -18,8 +18,7 @@ gravnet_core_function_template = (
     '{exp_table_t}, {exp_table_idx_t}, {weighted_feature_t}, {config}>({input1}, {input2}, {output});'
 )
 gravnet_core_include_list = [
-    'nnet_utils/nnet_gravnet_core_common.h',
-    'nnet_utils/nnet_gravnet_core.h',
+    'nnet_utils/nnet_gravnet_core_utils.h',
     'nnet_utils/nnet_gravnet_core_stream.h',
 ]
 

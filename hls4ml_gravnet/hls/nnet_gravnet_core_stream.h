@@ -3,7 +3,7 @@
 
 #include "hls_stream.h"
 #include "nnet_gravnet_bitonic_sort_stream.h"
-#include "nnet_gravnet_core_common.h"
+#include "nnet_gravnet_core_utils.h"
 #include "nnet_types.h"
 
 namespace nnet {
@@ -99,8 +99,8 @@ void apply_weights_and_reduce(hls::stream<nnet::array<knn_dist_T, CONFIG_T::n_ne
                               exp_table_T exp_table[CONFIG_T::exp_table_size], hls::stream<output_T> &out_stream) {
     accum_T acc_sum[CONFIG_T::F];
     accum_T acc_max[CONFIG_T::F];
-#pragma HLS ARRAY_PARTITION variable = acc_sum complete dim = 0
-#pragma HLS ARRAY_PARTITION variable = acc_max complete dim = 0
+#pragma HLS ARRAY_PARTITION variable = acc_sum complete
+#pragma HLS ARRAY_PARTITION variable = acc_max complete
 
 ReduceVertexLoop:
     for (unsigned int i = 0; i < CONFIG_T::V; i++) {
@@ -160,9 +160,7 @@ void gravnet_core(hls::stream<coords_T> &coords_stream, hls::stream<feats_T> &fe
     hls::stream<coords_T> coords_stream_buffer;
     hls::stream<feats_T> feats_stream_buffer;
 #pragma HLS STREAM variable = coords_stream_buffer depth = 2
-#pragma HLS BIND_STORAGE variable = coords_stream_buffer type = fifo impl = srl
 #pragma HLS STREAM variable = feats_stream_buffer depth = 2
-#pragma HLS BIND_STORAGE variable = feats_stream_buffer type = fifo impl = srl
 
     coord_val_t coords_buffer[CONFIG_T::V][CONFIG_T::S];
 #pragma HLS ARRAY_PARTITION variable = coords_buffer complete dim = 0

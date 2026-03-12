@@ -46,8 +46,6 @@ class HGravNetCore(Layer):
 
         if not log2(resolution).is_integer():
             raise ValueError('Exponential table resolution must be a power of two')
-        # if not log2(scale_factor).is_integer():
-        #     raise ValueError('Scale factor must be a power of two')
 
         exp_table_size = scale_factor * resolution
         exp_table_indexing_shmt = int(ceil(log2(resolution)))

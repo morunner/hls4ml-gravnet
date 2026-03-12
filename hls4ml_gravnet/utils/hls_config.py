@@ -1,5 +1,5 @@
 def set_gravnet_hls_config(hls_config: dict):
-    hls_config['Model']['Precision'] = {'default': 'ap_fixed<16,8,AP_RND,AP_SAT>', 'maximum': 'ap_fixed<16,8,AP_RND,AP_SAT>'}
+    hls_config['Model']['Precision'] = {'default': 'ap_fixed<16,6>', 'maximum': 'ap_fixed<18,8>'}
     hls_config['Model']['Strategy'] = 'Latency'
 
     for layer in hls_config['LayerName'].keys():
@@ -8,17 +8,21 @@ def set_gravnet_hls_config(hls_config: dict):
                 'ScaleFactor': 2,
                 'Resolution': 64,
             }
-            hls_config['LayerName'][layer]['Precision']['coords_diff'] = 'ap_fixed<8, 3, AP_RND, AP_SAT>'
-            hls_config['LayerName'][layer]['Precision']['exp_table'] = 'ap_ufixed<8, 1, AP_RND, AP_SAT>'
-
-        if 'dense' in layer or 'transform' in layer:
-            hls_config['LayerName'][layer]['Precision']['weight'] = 'ap_fixed<8,1,AP_RND,AP_SAT>'
-            hls_config['LayerName'][layer]['Precision']['bias'] = 'ap_fixed<8,1,AP_RND,AP_SAT>'
+            hls_config['LayerName'][layer]['Precision']['coords_diff'] = 'ap_fixed<8, 3>'
+            hls_config['LayerName'][layer]['Precision']['exp_table'] = 'ap_ufixed<8, 1>'
 
         if 'gex' in layer:
-            hls_config['LayerName'][layer]['Precision']['mean'] = 'ap_fixed<16,12,AP_RND,AP_SAT>'
+            hls_config['LayerName'][layer]['Precision']['mean'] = 'ap_fixed<22,12>'
 
-    hls_config['LayerName']['global_avg_pool']['Precision']['accum'] = 'ap_fixed<22,16>'
+        layer_precision_keys = hls_config['LayerName'][layer]['Precision'].keys()
+        if 'weight' in layer_precision_keys:
+            hls_config['LayerName'][layer]['Precision']['weight'] = 'ap_fixed<8,1,AP_RND,AP_SAT>'
+        if 'bias' in layer_precision_keys:
+            hls_config['LayerName'][layer]['Precision']['bias'] = 'ap_fixed<8,1,AP_RND,AP_SAT>'
+        if 'accum' in layer_precision_keys:
+            hls_config['LayerName'][layer]['Precision']['accum'] = 'ap_fixed<20,8>'
+
+        hls_config['LayerName']['global_avg_pool']['Precision']['accum'] = 'ap_fixed<22,16>'
 
 
 def set_converter_opts(converter_opts: dict, backend: str = 'Vitis'):

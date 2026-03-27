@@ -1,0 +1,46 @@
+from math import log2
+
+import hls4ml
+from hls4ml_gravnet.hls4ml_extension.global_exchange import HGlobalExchange
+
+global_exchange_config_template = """
+    struct config{index} : nnet::global_exchange_config {{
+        static const unsigned V = {V};
+        static const unsigned V_nbits = {V_nbits};
+        static const unsigned F = {F};
+    }};\n"""
+
+global_exchange_function_template = 'nnet::global_exchange<{input_t}, {output_t}, {mean_t}, {config}>({input}, {output});'
+global_exchange_include_list = ['nnet_utils/nnet_global_exchange_stream.h']
+
+
+class GlobalExchangeConfigTemplate(hls4ml.backends.template.LayerConfigTemplate):
+    def __init__(self):
+        super().__init__(HGlobalExchange)
+        self.template = global_exchange_config_template
+
+    def format(self, node):
+        params = self._default_config_params(node)
+        input_shape = node.get_input_variable().shape
+        assert len(input_shape) == 2, 'GlobalExchange currently only supports 2D inputs'
+
+        V = input_shape[0]
+        F = input_shape[1]
+        if not log2(V).is_integer():
+            raise ValueError('Number of vertices must be a power of two')
+
+        params['V'] = V
+        params['V_nbits'] = log2(V)
+        params['F'] = F
+        return self.template.format(**params)
+
+
+class GlobalExchangeFunctionTemplate(hls4ml.backends.template.FunctionCallTemplate):
+    def __init__(self):
+        super().__init__(HGlobalExchange, include_header=global_exchange_include_list)
+        self.template = global_exchange_function_template
+
+    def format(self, node):
+        params = self._default_function_params(node)
+        params['mean_t'] = node.get_attr('mean_t').name
+        return self.template.format(**params)

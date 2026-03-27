@@ -1,0 +1,65 @@
+template_str = """
+#pragma once
+#include <string>
+#include <cstddef>
+
+struct gravnet_config {
+    static const unsigned B = {{ gravnet_config.B }};
+    static const unsigned V = {{ gravnet_config.V }};
+    static const unsigned F = {{ gravnet_config.F }};
+    static const unsigned S = {{ gravnet_config.S }};
+    static const unsigned n_neighbours = {{ gravnet_config.n_neighbours }};
+    static const unsigned exp_table_size = {{ gravnet_config.exp_table_size }};
+    static const unsigned exp_table_size_nbits = {{ gravnet_config.exp_table_size_nbits }};
+    static const unsigned exp_table_indexing_shmt = {{ gravnet_config.exp_table_indexing_shmt }};
+    template<class coord_T, class res_T, class diff_T>
+    using distance_fn = nnet::{{ gravnet_config.distance_metric }}<coord_T, res_T, diff_T>;
+};
+
+struct global_exchange_config {
+    static const unsigned V = {{ global_exchange_config.V }};
+    static const unsigned F = {{ global_exchange_config.F }};
+    static const unsigned V_nbits = {{ global_exchange_config.V_nbits }};
+};
+
+{% for class_name, items in data.items() %}
+struct {{ class_name }} {
+    std::string name;
+{%- for field in get_fields(items[0]) %}
+    {%- if is_array(items[0], field) %}
+    float* {{ field }};
+    size_t {{ field }}_len;
+    {%- else %}
+    {{ get_cpp_type(items[0], field) }} {{ field }};
+    {%- endif %}
+{%- endfor %}
+};
+{%- endfor %}
+{% for class_name, items in data.items() %}
+    {%- for i, item in enumerate(items) %}
+        {%- for field in get_fields(item) %}
+            {%- if is_array(item, field) %}
+static float {{ class_name }}_data_{{ i }}_{{ field }}[] = {{ cpp(get_attr(item, field)) }};
+            {%- endif %}
+        {%- endfor %}
+    {%- endfor %}
+{%- endfor %}
+{% for class_name, items in data.items() %}
+static const int {{ class_name }}s_length = {{ nvectors(class_name) }};
+static {{ class_name }} {{ class_name }}s[] = {
+    {%- for i, item in enumerate(items) %}
+    {
+        "{{ item.name }}",
+        {%- for field in get_fields(item) %}
+            {%- if is_array(item, field) %}
+        {{ class_name }}_data_{{ i }}_{{ field }},
+        {{ length(get_attr(item, field)) }},
+            {%- else %}
+        {{ get_attr(item, field) }},
+            {%- endif %}
+        {%- endfor %}
+    },
+    {%- endfor %}
+};
+{%- endfor %}
+"""

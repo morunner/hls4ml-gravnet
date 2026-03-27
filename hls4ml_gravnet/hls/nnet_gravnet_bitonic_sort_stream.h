@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2026 morunner
- * * This file contains original code, as well as code and architectural
+ * * This file contains code and architectural
  * designs derived from https://github.com/marcneu/pcnhlslib
  * Original work Copyright (c) 2025 Marc Neu
  * * MIT License
@@ -33,11 +33,18 @@ namespace nnet {
 
 constexpr int log2(int x) { return (x <= 1) ? 0 : 1 + log2(x / 2); }
 
+/**
+ * @brief Reads an array from the input streams, sorts it, and writes it to the output streams.
+ */
 template <unsigned V, unsigned K, class dist_T, class idx_T>
 void sort_node_array(hls::stream<nnet::array<dist_T, K>> &dist_in, hls::stream<nnet::array<idx_T, K>> &idx_in,
                      hls::stream<nnet::array<dist_T, K>> &dist_out, hls::stream<nnet::array<idx_T, K>> &idx_out) {
     for (unsigned int i = 0; i < V; i++) {
 #pragma HLS PIPELINE II = 1
+
+// Since bitonic_sort_array is fully unrolled,
+// relaxing the latency here helps achieving timing closure.
+// This is currently tuned for K = 8, you may need to adapt for different K.
 #pragma HLS LATENCY min = 7 max = 8
         nnet::array<dist_T, K> d = dist_in.read();
         nnet::array<idx_T, K> idx = idx_in.read();
@@ -49,6 +56,10 @@ void sort_node_array(hls::stream<nnet::array<dist_T, K>> &dist_in, hls::stream<n
     }
 }
 
+/**
+ * @brief Reads two sorted arrays from left and right streams, merges them, keeps the top K,
+ * and writes the result to the output streams.
+ */
 template <unsigned V, unsigned K, class dist_T, class idx_T>
 void merge_node_arrays_and_keep_k(hls::stream<nnet::array<dist_T, K>> &left_dist_in,
                                   hls::stream<nnet::array<idx_T, K>> &left_idx_in,
@@ -73,6 +84,27 @@ void merge_node_arrays_and_keep_k(hls::stream<nnet::array<dist_T, K>> &left_dist
     }
 }
 
+/**
+ * @brief This implements a top-k selection tree using bitonic sorting networks, sorting vertex distances
+ * and keeping track of their indices to retrieve features later.
+ * * Here is an example of such a reduction tree:
+ * * V (Total Distances from Input Streams)
+ * |          |          |          |
+ * [Sort]     [Sort]     [Sort]     [Sort]    s = 0 (sort_node_array)
+ * |          |          |          |
+ * \        /            \        /
+ * - ( < ) -             - ( < ) -            Compare and Merge
+ * |                     |                    s = 1 (merge_node_arrays_and_keep_k)
+ * [Sort]                [Sort]
+ * |                     |
+ * \                   /
+ * ------- ( < ) -------                      Compare and Merge
+ * |                                          s = 2 (merge_node_arrays_and_keep_k)
+ * [Sort]
+ * |
+ * v
+ * K (Nearest Neighbors)
+ */
 template <class dist_T, class idx_T, typename CONFIG_T>
 void select_knn_tree(hls::stream<nnet::array<dist_T, CONFIG_T::n_neighbours>> dist_in[CONFIG_T::V / CONFIG_T::n_neighbours],
                      hls::stream<nnet::array<idx_T, CONFIG_T::n_neighbours>> idx_in[CONFIG_T::V / CONFIG_T::n_neighbours],
@@ -82,7 +114,7 @@ void select_knn_tree(hls::stream<nnet::array<dist_T, CONFIG_T::n_neighbours>> di
 
     constexpr int V = CONFIG_T::V;
     constexpr int K = CONFIG_T::n_neighbours;
-    constexpr int num_leaves = CONFIG_T::V / K;
+    constexpr int num_leaves = V / K;
     constexpr int tree_depth = log2(num_leaves);
 
     hls::stream<nnet::array<dist_T, K>> dist_streams[tree_depth + 1][num_leaves];
@@ -106,6 +138,7 @@ void select_knn_tree(hls::stream<nnet::array<dist_T, CONFIG_T::n_neighbours>> di
                     idx_streams[s - 1][2 * n + 1], dist_streams[s][n], idx_streams[s][n]);
             }
         } else {
+            // Final merge outputs directly to the top-level output streams
             merge_node_arrays_and_keep_k<V, K, dist_T, idx_T>(dist_streams[s - 1][0], idx_streams[s - 1][0],
                                                               dist_streams[s - 1][1], idx_streams[s - 1][1], dist_out,
                                                               idx_out);

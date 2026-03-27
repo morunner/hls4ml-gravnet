@@ -165,6 +165,8 @@ void gravnet_core(hls::stream<coords_T> &coords_stream, hls::stream<feats_T> &fe
     coord_val_t coords_buffer[CONFIG_T::V][CONFIG_T::S];
 #pragma HLS ARRAY_PARTITION variable = coords_buffer complete dim = 0
 
+    // Explicitly replicate this buffer such that it can be read for each neighbour iteration
+    // in parallel. This is also explicitly put into BRAM for efficient routing.
     feat_val_t feats_buffer[CONFIG_T::n_neighbours][CONFIG_T::V][CONFIG_T::F];
 #pragma HLS BIND_STORAGE variable = feats_buffer type = ram_2p impl = bram
 #pragma HLS ARRAY_PARTITION variable = feats_buffer complete dim = 1
@@ -184,6 +186,7 @@ void gravnet_core(hls::stream<coords_T> &coords_stream, hls::stream<feats_T> &fe
 #pragma HLS STREAM variable = knn_dists depth = 16
 #pragma HLS STREAM variable = knn_indices depth = 16
 
+    // Buffering the inputs at the boundary of this function helps timing closure
     buffer_inputs<CONFIG_T, coords_T, feats_T>(coords_stream, feats_stream, coords_stream_buffer, feats_stream_buffer);
 
     read_inputs<coords_T, feats_T, coord_val_t, feat_val_t, CONFIG_T>(coords_stream_buffer, feats_stream_buffer,

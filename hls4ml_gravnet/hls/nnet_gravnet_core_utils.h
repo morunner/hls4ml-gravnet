@@ -38,8 +38,20 @@ template <typename T> struct gravnet_core_limits;
 template <int W, int I, ap_q_mode Q, ap_o_mode O, int N> struct gravnet_core_limits<ap_fixed<W, I, Q, O, N>> {
     typedef ap_fixed<W, I, Q, O, N> T;
 
+    /**
+     * @brief Calculates the theoretical minimum (most negative) value.
+     * In two's complement, this is exactly -(2^(I-1)).
+     * The bitwise shift (1 << (I - 1)) efficiently computes 2^(I-1).
+     */
     static constexpr double min() { return -(1 << (I - 1)); }
 
+    /**
+     * @brief Calculates the theoretical maximum (most positive) value.
+     * In two's complement, the max is almost 2^(I-1), minus one Least Significant Bit (LSB).
+     * - (1 << (I - 1)) computes the upper integer bound: 2^(I-1).
+     * - (1 << (W - I)) computes the fractional denominator: 2^(W-I).
+     * - 1.0 / (1 << (W - I)) gives the exact decimal value of the LSB.
+     */
     static constexpr double max() { return (1 << (I - 1)) - (1.0 / (1 << (W - I))); }
 
     static T min_val() { return (T)min(); }

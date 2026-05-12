@@ -9,48 +9,33 @@ description = "hls4ml GravNet"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "ipykernel>=7.1.0",
-    "jinja2>=3.1.6",
-    "jupyter>=1.1.1",
-    "matplotlib>=3.10.7",
-    "pandas>=2.1.0",
-    "pre-commit>=4.5.0",
-    "pytest>=9.0.1",
+    "hls4ml",
+    "polars>=1.35.2",
     "quantized-gravnet",
-    "seaborn>=0.13.2",
-    "tabulate>=0.9.0",
 ]
 
-[tool.uv]
-index-url = "https://test.pypi.org/simple/"
-extra-index-url = ["https://pypi.org/simple"]
-
-[tool.uv.workspace]
-members = [
-    ".",
-    "quantized-gravnet",
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.0",
+    "pytest>=9.0.1",
 ]
 
 [tool.uv.sources]
-hls4ml-gravnet = { workspace = true, editable = true }
-quantized-gravnet = { workspace = true, editable = true }
-
-[tool.black]
-line-length = 125
-skip-string-normalization = true
+hls4ml = { git = "https://github.com/morunner/hls4ml.git", rev = "21378774ac8bc8168708fdcbc256bd93f1c946e1" }
+quantized-gravnet = { git = "https://github.com/lorenzo-as/quantized-gravnet.git", rev = "30fa51212d90e6de809db2c6957726bc4af5c480" }
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 
 line-length = 125
 indent-width = 4
-exclude = [ "hls4ml/", "quantized-gravnet/" ]
+exclude = [ "hls4ml"]
 
 format.quote-style = "single"
 format.skip-magic-trailing-comma = false
 format.docstring-code-line-length = 125
 format.docstring-code-format = true
-lint.select = [ "E", "F", "F401", "I", "W" ]
+lint.select = [ "E", "F", "I", "W" ]
 lint.ignore = [ "E741" ]
 lint.per-file-ignores = { "__init__.py" = [ "F401" ] }
 
@@ -60,24 +45,14 @@ lint.unfixable = [  ]
 [tool.pytest.ini_options]
 norecursedirs = [
     "hls4ml",
-    "quantized-gravnet"
 ]
 python_files = "test_*.py generate_test_vectors.py"
-pythonpath = [
-    "quantized-gravnet",
-]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["hls4ml_gravnet*"]
-exclude = ["tests*",  "notebooks*", "data*", "hls4ml", "quantized-gravnet*"]
+exclude = ["tests*",  "notebooks*", "data*", "hls4ml"]
 namespaces = false
-
-[dependency-groups]
-dev = [
-    "hls4ml-gravnet",
-    "quantized-gravnet",
-]
 
 [tool.setuptools.package-data]
 "hls4ml_gravnet" = ["**/*.h"]

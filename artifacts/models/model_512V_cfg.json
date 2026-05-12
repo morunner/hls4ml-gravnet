@@ -1,0 +1,35 @@
+{
+  "dense_bias_quantizer": "quantized_bits(8,0,1,alpha=1.0)",
+  "dense_kernel_quantizer": "quantized_bits(8,0,1,alpha=1.0)",
+  "dense_layer_dims": {
+    "input_dense": 8,
+    "out0": 8,
+    "out1": 8,
+    "post_gn": 16,
+    "postgn_block": 16
+  },
+  "distance_metric": "l1",
+  "gravnet_kwargs": {
+    "classification_activation": "quantized_sigmoid(8)",
+    "coordinate_bias_quantizer": "quantized_bits(8,0,1,alpha=1.0)",
+    "coordinate_kernel_quantizer": "quantized_bits(8,0,1,alpha=1.0)",
+    "feature_bias_quantizer": "quantized_bits(8,0,1,alpha=1.0)",
+    "feature_kernel_quantizer": "quantized_bits(8,0,1,alpha=1.0)",
+    "fix_coordinate_space": false,
+    "other_kernel_initializer": "glorot_uniform",
+    "output_activation": "quantized_relu(12,4)",
+    "output_bias_quantizer": "quantized_bits(8,0,1,alpha=1.0)",
+    "output_kernel_quantizer": "quantized_bits(8,0,1,alpha=1.0)",
+    "post_gn_activation": "quantized_relu(12,4)",
+    "post_gn_gex_activation": "quantized_relu(12,4)",
+    "post_gn_out_activation": "quantized_relu(12,4)",
+    "post_gn_relu": "quantized_relu(12,4)",
+    "regression_bias_quantizer": "quantized_bits(16,8,1,alpha=1.0)",
+    "regression_kernel_quantizer": "quantized_bits(16,8,1,alpha=1.0)"
+  },
+  "n_blocks": 2,
+  "n_filters": 8,
+  "n_neighbours": 8,
+  "n_postgn_dense_blocks": 2,
+  "n_propagate": 8
+}

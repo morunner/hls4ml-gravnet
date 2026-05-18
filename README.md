@@ -1,4 +1,12 @@
-# hls4ml-gravnet
+# hls4ml-gravnet: FPL 2026 Artifacts
+
+This branch contains the artifacts of the paper *Ultra-Low Latency and Scalable GravNet Clustering on FPGAs for Highly Granular Detectors*, submitted to FPL 2026. The branch `artifacts/fpl-2026` adds the source code, model inputs, scripts, and reference tables needed to reproduce the paper results.
+
+Reviewers should start from the artifact workflow in [`artifacts/`](artifacts/README.md). That directory contains the step-by-step instructions for environment setup, synthesis, synthesis-metric comparison, Coyote inference on the [ETHZ HACC cluster](https://github.com/fpgasystems/hacc), and aggregation of the generated results.
+
+Once the artifact has been approved, this branch will remain frozen as the reference point for comparisons with the paper. Future development will continue on the upstream `main` branch and will not affect this artifact branch. Additionally, a copy of the approved artifact will be uploaded to Zenodo.
+
+## hls4ml-gravnet
 
 This repository contains the High-Level Synthesis (HLS) headers and Python auxiliaries required to synthesize the quantized GravNet model from [quantized-gravnet](https://github.com/lorenzo-as/quantized-gravnet) using [hls4ml](https://github.com/fastmachinelearning/hls4ml) for real-time inference on FPGAs.
 

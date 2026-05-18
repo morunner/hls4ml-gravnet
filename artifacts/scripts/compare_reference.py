@@ -18,8 +18,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Compare generated artifact metrics with the paper reference table.')
     parser.add_argument('--reference', type=Path, default=REFERENCE)
     parser.add_argument('--metrics-root', type=Path, default=METRICS_ROOT)
-    parser.add_argument('--output-csv', default='paper_table_comparison.csv')
-    parser.add_argument('--output-md', default='paper_table_comparison.md')
+    parser.add_argument('--output-csv', default='paper_table_synth_comparison.csv')
+    parser.add_argument('--output-md', default='paper_table_synth_comparison.md')
     return parser.parse_args()
 
 
@@ -116,7 +116,6 @@ def write_markdown(rows: pl.DataFrame, path: Path) -> None:
     lines = [
         '# Paper Table Comparison',
         '',
-        'This report is informational. It does not enforce exact equality because resource and runtime results can vary by tool installation, license settings, and HACC host state.',
         '',
         *table,
     ]
@@ -126,9 +125,9 @@ def write_markdown(rows: pl.DataFrame, path: Path) -> None:
 def main() -> None:
     args = parse_args()
     reference = pl.read_csv(args.reference)
-    synth = add_project_columns(read_many(args.metrics_root, 'gravnet_*_metrics.csv'))
+    synth = add_project_columns(read_many(args.metrics_root, 'synth_metrics.csv'))
     if synth.is_empty():
-        synth = add_project_columns(read_many(args.metrics_root, 'all_metrics.csv'))
+        synth = add_project_columns(read_many(args.metrics_root, 'gravnet_*_metrics.csv'))
     rows = pl.DataFrame(comparison_rows(reference, synth))
 
     args.metrics_root.mkdir(parents=True, exist_ok=True)

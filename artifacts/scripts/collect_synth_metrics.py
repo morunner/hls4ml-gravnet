@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import re
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +15,9 @@ class MissingReportError(RuntimeError):
     pass
 
 
+TIMING_ROW_RE = re.compile(r'^\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+\d+\s+\d+')
+
+
 def parse_coyote_report(path: Path) -> dict[str, Any]:
     report: dict[str, Any] = {}
     build_dir = path / 'build'
@@ -21,6 +26,9 @@ def parse_coyote_report(path: Path) -> dict[str, Any]:
         util = hw_dirs[0] / 'reports' / 'shell_utilization.rpt'
         if util.exists():
             report['VivadoSynthReport'] = parse_shell_utilization(util)
+        timing = hw_dirs[0] / 'reports' / 'shell_timing_summary.rpt'
+        if timing.exists():
+            report['TimingReport'] = parse_timing_summary(timing)
 
     sol = (
         build_dir
@@ -58,6 +66,21 @@ def parse_shell_utilization(path: Path) -> dict[str, Any]:
             elif 'RAMB36' in name and 'RAMB36E2' not in name:
                 rows.setdefault('BRAM_36K', used)
     return rows
+
+
+def parse_timing_summary(path: Path) -> dict[str, Any]:
+    seen_header = False
+    with path.open() as f:
+        for line in f:
+            if 'WNS(ns)' in line and 'TNS(ns)' in line:
+                seen_header = True
+                continue
+            if not seen_header:
+                continue
+            match = TIMING_ROW_RE.match(line)
+            if match:
+                return {'WNS': number(match.group(1)), 'TNS': number(match.group(2))}
+    return {}
 
 
 def parse_cosim_transaction(solution_dir: Path) -> dict[str, Any]:
@@ -156,17 +179,24 @@ def validate_report(path: Path, backend: str, report: dict[str, Any]) -> None:
         raise MissingReportError(f'Missing required report value(s) for {path}: {", ".join(missing_values)}')
 
 
-def collect_one(path: Path, backend: str, allow_missing: bool = False) -> dict[str, Any]:
+def collect_one(path: Path, backend: str) -> dict[str, Any]:
+    report_missing = False
     try:
         report = parse_report(path, backend)
-    except MissingReportError:
-        if not allow_missing:
-            raise
+    except MissingReportError as exc:
+        warnings.warn(str(exc))
         report = {}
-    if not allow_missing:
-        validate_report(path, backend, report)
+        report_missing = True
+
+    if not report_missing:
+        try:
+            validate_report(path, backend, report)
+        except MissingReportError as exc:
+            warnings.warn(str(exc))
+
     vsynth = report.get('VivadoSynthReport', {})
     cosim = report.get('CosimReport', {})
+    timing = report.get('TimingReport', {})
     lut = number(vsynth.get('LUT'))
     ff = number(vsynth.get('FF'))
     dsp = number(vsynth.get('DSP48E', vsynth.get('DSP')))
@@ -184,6 +214,7 @@ def collect_one(path: Path, backend: str, allow_missing: bool = False) -> dict[s
         'ff_percent': percent(ff, number(vsynth.get('AvailableFF'))),
         'dsp_percent': percent(dsp, number(vsynth.get('AvailableDSP'))),
         'bram_percent': percent(bram, number(vsynth.get('AvailableBRAM_18K'))),
+        'wns': number(timing.get('WNS')),
         'cosim_latency_min': cosim.get('LatencyMin'),
         'cosim_ii_min': cosim.get('IntervalMin'),
     }
@@ -202,8 +233,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--tag')
     parser.add_argument('--hls-root', type=Path, default=HLS_ROOT)
     parser.add_argument('--metrics-root', type=Path, default=METRICS_ROOT)
-    parser.add_argument('--output', default='all_metrics.csv')
-    parser.add_argument('--allow-missing', action='store_true', help='Write partial rows instead of failing on missing reports.')
+    parser.add_argument('--output', default='synth_metrics.csv')
     return parser.parse_args()
 
 
@@ -215,7 +245,7 @@ def main() -> None:
         for backend in args.backends:
             stem = project_name(vertices, backend, par, args.tag)
             path = args.hls_root / stem
-            rows.append({'vertices': vertices, 'project': stem, **collect_one(path, backend, args.allow_missing)})
+            rows.append({'vertices': vertices, 'project': stem, **collect_one(path, backend)})
 
     args.metrics_root.mkdir(parents=True, exist_ok=True)
     out_file = args.metrics_root / args.output

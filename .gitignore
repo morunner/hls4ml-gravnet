@@ -125,6 +125,7 @@ celerybeat.pid
 .env
 .envrc
 .venv
+artifacts/.env.mk
 env/
 venv/
 ENV/

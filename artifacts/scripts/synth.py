@@ -39,7 +39,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--vivado-path', type=Path, default=Path('/tools/Xilinx/2025.1/Vivado'))
     parser.add_argument('--part', default='xcu55c-fsvh2892-2L-e')
     parser.add_argument('--test-vectors', type=int, default=16)
-    parser.add_argument('--allow-missing-metrics', action='store_true')
     return parser.parse_args()
 
 
@@ -93,7 +92,7 @@ def main() -> None:
     args.metrics_root.mkdir(parents=True, exist_ok=True)
     metrics_file = args.metrics_root / f'{name}_metrics.csv'
     pl.DataFrame(
-        [{**{'vertices': args.vertices, 'project': name}, **collect_one(out_dir, args.backend, args.allow_missing_metrics)}]
+        [{**{'vertices': args.vertices, 'project': name}, **collect_one(out_dir, args.backend)}]
     ).write_csv(metrics_file)
     print(f'Wrote {metrics_file}')
 

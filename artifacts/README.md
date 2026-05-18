@@ -12,15 +12,13 @@ make setup-env
 
 This installs the Python environment with `uv`, checks that the required tools and Python packages are available, and records the selected Vitis/Vivado paths in `artifacts/.env.mk` for later commands.
 
-**Expected Environment:**
+**Expected environment:**
 
 - Python 3.11, with dependencies installed through `uv`.
 - Xilinx Vitis and Vivado 2025.1.
 - Target part `xcu55c-fsvh2892-2L-e`.
 
----
-
-The default tool locations for *Vitis HLS* and *Vivado*  are:
+The default tool locations for *Vitis HLS* and *Vivado* are:
 
 ```text
 /tools/Xilinx/2025.1/Vitis
@@ -136,7 +134,8 @@ The main generated directories are:
 artifacts/hls4ml_out/
 artifacts/metrics/
 ```
-To remove all generated ouputs and return to a clean artifact workspace, run:
+
+To remove all generated outputs and return to a clean artifact workspace, run:
 
 ```bash
 make clean-artifacts

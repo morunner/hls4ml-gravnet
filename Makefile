@@ -17,7 +17,7 @@ DRY_RUN_FLAG = $(if $(filter 1 true yes,$(DRY_RUN)),--dry-run,)
 PROGRAM_HACC_FPGA_FLAG = $(if $(filter 1 true yes,$(PROGRAM_HACC_FPGA)),--program-hacc-fpga,)
 MODEL_ARGS = --models $(VERTICES_PAR)
 
-.PHONY: setup-env synth synth-metrics coyote-inference coyote-metrics clean
+.PHONY: setup-env synth synth-metrics coyote-inference coyote-metrics clean-artifacts clean
 
 setup-env:
 	@mkdir -p $(dir $(ARTIFACT_ENV))
@@ -51,3 +51,5 @@ coyote-metrics:
 
 clean-artifacts:
 	rm -rf artifacts/hls4ml_out artifacts/metrics artifacts/scripts/__pycache__ $(ARTIFACT_ENV)
+
+clean: clean-artifacts

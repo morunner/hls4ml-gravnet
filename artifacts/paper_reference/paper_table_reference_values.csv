@@ -1,7 +1,0 @@
-vertices_label,vertices,par,lut_percent,dsp_percent,ff_percent,bram_percent,cosim_latency_cycles,cosim_ii_cycles,e2e_latency_us,note
-64,64,1,20,14,11,14,627,57,6.98,
-64,64,2,29,27,14,30,401,31,5.87,
-128,128,1,25,14,13,18,1081,121,9.22,
-128,128,2,39,28,18,32,629,63,6.97,
-256,256,1,36,14,18,18,1982,249,13.76,
-512,512,1,58,13,28,18,3778,505,,Does not achieve timing closure as indicated in the paper. No measurements on hardware. 

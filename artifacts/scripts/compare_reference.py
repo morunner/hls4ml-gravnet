@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import re
 from pathlib import Path
 from typing import Any
@@ -10,13 +11,15 @@ import polars as pl
 from common import METRICS_ROOT, REPO_ROOT
 
 
-REFERENCE = REPO_ROOT / 'artifacts' / 'paper_reference' / 'paper_table_reference_values.csv'
+RESOURCE_REFERENCE = REPO_ROOT / 'artifacts' / 'paper_reference' / 'resource_utilization_reference.csv'
+COSIM_REFERENCE = REPO_ROOT / 'artifacts' / 'paper_reference' / 'cosim_reference.csv'
 PROJECT_RE = re.compile(r'gravnet_(?P<vertices>\d+)vertices_(?P<backend>[^_]+)_(?P<par>\d+)PAR')
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Compare generated artifact metrics with the paper reference table.')
-    parser.add_argument('--reference', type=Path, default=REFERENCE)
+    parser.add_argument('--resource-reference', type=Path, default=RESOURCE_REFERENCE)
+    parser.add_argument('--cosim-reference', type=Path, default=COSIM_REFERENCE)
     parser.add_argument('--metrics-root', type=Path, default=METRICS_ROOT)
     parser.add_argument('--output-csv', default='paper_table_synth_comparison.csv')
     parser.add_argument('--output-md', default='paper_table_synth_comparison.md')
@@ -57,19 +60,21 @@ def value(row: dict[str, Any], key: str) -> Any:
     return val
 
 
-def comparison_rows(reference: pl.DataFrame, synth: pl.DataFrame) -> list[dict[str, Any]]:
+def comparison_rows(resources: pl.DataFrame, cosim: pl.DataFrame, synth: pl.DataFrame) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     synth_lookup = {}
     for row in synth.to_dicts():
         if row.get('backend') == 'Coyote':
             synth_lookup[(row.get('vertices'), row.get('par'))] = row
 
-    for ref in reference.to_dicts():
+    cosim_lookup = {(row.get('vertices'), row.get('par')): row for row in cosim.to_dicts() if row.get('backend') == 'Coyote'}
+    for ref in resources.filter(pl.col('backend') == 'Coyote').sort(['vertices', 'par']).to_dicts():
         key = (ref['vertices'], ref['par'])
         synth_row = synth_lookup.get(key, {})
+        cosim_row = cosim_lookup.get(key, {})
         rows.append(
             {
-                'model': f'{ref["vertices_label"]} {ref["par"]}PAR',
+                'model': f'{ref["vertices"]} {ref["par"]}PAR',
                 'lut_paper': value(ref, 'lut_percent'),
                 'lut_generated': value(synth_row, 'lut_percent'),
                 'dsp_paper': value(ref, 'dsp_percent'),
@@ -78,9 +83,9 @@ def comparison_rows(reference: pl.DataFrame, synth: pl.DataFrame) -> list[dict[s
                 'ff_generated': value(synth_row, 'ff_percent'),
                 'bram_paper': value(ref, 'bram_percent'),
                 'bram_generated': value(synth_row, 'bram_percent'),
-                'cosim_latency_paper': value(ref, 'cosim_latency_cycles'),
+                'cosim_latency_paper': value(cosim_row, 'cosim_latency_min'),
                 'cosim_latency_generated': value(synth_row, 'cosim_latency_min'),
-                'cosim_ii_paper': value(ref, 'cosim_ii_cycles'),
+                'cosim_ii_paper': value(cosim_row, 'cosim_ii_min'),
                 'cosim_ii_generated': value(synth_row, 'cosim_ii_min'),
             }
         )
@@ -88,7 +93,13 @@ def comparison_rows(reference: pl.DataFrame, synth: pl.DataFrame) -> list[dict[s
 
 
 def cell(value_: Any) -> str:
-    return '' if value_ is None else str(value_)
+    if value_ is None:
+        return ''
+    if isinstance(value_, float):
+        if math.isnan(value_):
+            return ''
+        return f'{value_:.2f}'
+    return str(value_)
 
 
 def write_markdown(rows: pl.DataFrame, path: Path) -> None:
@@ -124,11 +135,12 @@ def write_markdown(rows: pl.DataFrame, path: Path) -> None:
 
 def main() -> None:
     args = parse_args()
-    reference = pl.read_csv(args.reference)
+    resources = pl.read_csv(args.resource_reference)
+    cosim = pl.read_csv(args.cosim_reference)
     synth = add_project_columns(read_many(args.metrics_root, 'synth_metrics.csv'))
     if synth.is_empty():
         synth = add_project_columns(read_many(args.metrics_root, 'gravnet_*_metrics.csv'))
-    rows = pl.DataFrame(comparison_rows(reference, synth))
+    rows = pl.DataFrame(comparison_rows(resources, cosim, synth))
 
     args.metrics_root.mkdir(parents=True, exist_ok=True)
     out_csv = args.metrics_root / args.output_csv

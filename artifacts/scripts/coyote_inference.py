@@ -51,8 +51,8 @@ def main() -> None:
                     'project': project,
                     'batch_size': batch_size,
                     'samples': args.samples,
-                    'latency': latency,
-                    'throughput': throughput,
+                    'latency_us': latency,
+                    'throughput_samples_per_s': throughput,
                 }
             )
 
@@ -60,9 +60,9 @@ def main() -> None:
         pl.DataFrame(rows)
         .group_by(['vertices', 'project', 'batch_size', 'samples'])
         .agg(
-            pl.col('latency').mean().alias('latency_mean'),
-            pl.col('latency').std().alias('latency_std'),
-            pl.col('throughput').mean().alias('throughput_mean'),
+            pl.col('latency_us').mean().alias('latency_mean_us'),
+            pl.col('latency_us').std().alias('latency_std_us'),
+            pl.col('throughput_samples_per_s').mean().alias('throughput_mean_samples_per_s'),
         )
     )
     args.metrics_root.mkdir(parents=True, exist_ok=True)

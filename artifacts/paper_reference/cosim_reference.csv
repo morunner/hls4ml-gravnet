@@ -1,0 +1,7 @@
+backend,vertices,par,cosim_latency_min,cosim_ii_min
+Coyote,64,1,627,57
+Coyote,64,2,401,31
+Coyote,128,1,1081,121
+Coyote,128,2,629,63
+Coyote,256,1,1982,249
+Coyote,512,1,3778,505

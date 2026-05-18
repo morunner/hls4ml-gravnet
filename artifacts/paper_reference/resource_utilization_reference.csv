@@ -1,0 +1,7 @@
+backend,vertices,par,lut_percent,ff_percent,dsp_percent,bram_percent
+Coyote,64,1,20,11,14,14
+Coyote,64,2,29,14,27,30
+Coyote,128,1,25,13,14,18
+Coyote,128,2,39,18,28,32
+Coyote,256,1,36,18,14,18
+Coyote,512,1,56,28,13,18

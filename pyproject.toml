@@ -19,6 +19,10 @@ dev = [
     "pre-commit>=4.5.0",
     "pytest>=9.0.1",
 ]
+plotting = [
+    "matplotlib>=3.10.7",
+    "mplhep>=0.4.1",
+]
 
 [tool.uv.sources]
 hls4ml = { git = "https://github.com/morunner/hls4ml.git", rev = "21378774ac8bc8168708fdcbc256bd93f1c946e1" }

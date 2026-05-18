@@ -202,6 +202,7 @@ test/hls/include/test_vectors.h
 
 artifacts/hls4ml_out/
 artifacts/metrics/
+artifacts/plots/
 
 *.jou
 *.log

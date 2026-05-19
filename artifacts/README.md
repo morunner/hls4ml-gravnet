@@ -233,3 +233,7 @@ The synthesis outputs and saved environment file are kept by default. To remove 
 ```bash
 make artifact-clean HARD=1
 ```
+
+## GPU Benchmarking Baseline
+
+The GPU comparison baseline used by the paper plots is documented separately in [`GPU_BENCHMARKING.md`](GPU_BENCHMARKING.md). That note records the NVIDIA L40S TensorRT workflow, including the full-precision Keras-to-ONNX export, FP16 engine build settings, `trtexec` benchmark settings, and validation procedure used to produce the checked-in GPU reference values.

@@ -2,7 +2,7 @@
 
 This branch contains the artifacts of the paper *Ultra-Low Latency and Scalable GravNet Clustering on FPGAs for Highly Granular Detectors*, submitted to FPL 2026. The branch `artifacts/fpl-2026` adds the source code, model inputs, scripts, and reference tables needed to reproduce the paper results.
 
-Reviewers should start from the artifact workflow in [`artifacts/`](artifacts/README.md). That directory contains the step-by-step instructions for environment setup, synthesis, synthesis-metric comparison, Coyote inference on the [ETHZ HACC cluster](https://github.com/fpgasystems/hacc), and aggregation of the generated results.
+Reviewers should start from the artifact workflow in [`artifacts/`](artifacts/README.md). It is organized as six steps: [(1)](artifacts/README.md#step-1-prepare-the-environment) prepare the environment, [(2)](artifacts/README.md#step-2-run-synthesis) run synthesis, [(3)](artifacts/README.md#step-3-collect-synthesis-metrics) collect synthesis metrics, [(4)](artifacts/README.md#step-4-run-coyote-inference) run Coyote inference, [(5)](artifacts/README.md#step-5-collect-coyote-inference-metrics) collect Coyote inference metrics, and [(6)](artifacts/README.md#step-6-recreate-the-paper-plots) recreate the paper plots. Steps 1 to 3 and 6 can be run on any machine with Python, Vivado, and Vitis installed. Step 4 uses AMD Alveo U55C cards on the [ETHZ HACC cluster](https://github.com/fpgasystems/hacc), which is publicly available but requires an account, or an equivalent local U55C setup; see the [independent setup notes](artifacts/README.md#independent-set-up) for the latter.
 
 Once the artifact has been approved, this branch will remain frozen as the reference point for comparisons with the paper. Future development will continue on the upstream `main` branch and will not affect this artifact branch. Additionally, a copy of the approved artifact will be uploaded to Zenodo.
 
@@ -14,7 +14,7 @@ This repository contains the High-Level Synthesis (HLS) headers and Python auxil
 * Utilizes the hls4ml [Extension API](https://fastmachinelearning.org/hls4ml/advanced/extension.html) to convert models from Keras to HLS.
 * **Experimental Fork:** This project was initially tested with a specific experimental fork of hls4ml located [here](https://github.com/morunner/hls4ml/tree/this-fork-int). This fork includes necessary changes to support:
   * Synthesizing hls4ml with the Coyote accelerator backend.
-  * Compatibility with Vitis/Vivado 2025.2, with Coyote.
+  * Compatibility with Vitis/Vivado 2025.1, with Coyote.
   * Processing two vertices simultaneously per clock cycle.
   * Supporting multiple outputs with Coyote.
 
@@ -43,7 +43,7 @@ uv pip install -e .
 If you already have a project and want to add this package to your existing virtual environment:
 
 ```bash
-uv add git+[https://github.com/morunner/hls4ml-gravnet.git](https://github.com/morunner/hls4ml-gravnet.git)
+uv add git+https://github.com/morunner/hls4ml-gravnet.git
 ```
 
 ## Usage
@@ -120,6 +120,6 @@ The hardware implementations in this repository succeeded thanks to the foundati
       eprint={2507.05099},
       archivePrefix={arXiv},
       primaryClass={eess.SP},
-      url={[https://arxiv.org/abs/2507.05099](https://arxiv.org/abs/2507.05099)},
+      url={https://arxiv.org/abs/2507.05099},
 }
 ```

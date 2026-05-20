@@ -2,7 +2,7 @@
 
 This note documents the GPU benchmarking workflow used for the comparison baseline in the paper. The GPU results are provided only as a comparison point for the FPGA measurements. They are therefore documented here rather than packaged as a fully reproducible artifact with a custom Docker environment or checked-in model weights.
 
-The benchmark was run for three full-precision GravNet models with 64, 128, and 256 vertices that matched the architecture of the quantized models deployed on FPGA. The reported GPU baseline uses FP16 TensorRT engines on an NVIDIA L40S GPU. End-to-end latency includes host-to-device transfer, GPU execution, and device-to-host transfer, matching the FPGA end-to-end measurement convention used in the paper.
+The benchmark was run for three non-quantized floating-point GravNet models with 64, 128, and 256 vertices that matched the architecture of the quantized models deployed on FPGA. The reported GPU baseline uses FP16 TensorRT engines on an NVIDIA L40S GPU. End-to-end latency includes host-to-device transfer, GPU execution, and device-to-host transfer, matching the FPGA end-to-end measurement convention used in the paper.
 
 ## 1. Hardware and software environment
 

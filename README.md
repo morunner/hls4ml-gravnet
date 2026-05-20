@@ -4,7 +4,7 @@ This branch contains the artifacts of the paper *Ultra-Low Latency and Scalable 
 
 Reviewers should start from the artifact workflow in [`artifacts/`](artifacts/README.md). It is organized as six steps: [(1)](artifacts/README.md#step-1-prepare-the-environment) prepare the environment, [(2)](artifacts/README.md#step-2-run-synthesis) run synthesis, [(3)](artifacts/README.md#step-3-collect-synthesis-metrics) collect synthesis metrics, [(4)](artifacts/README.md#step-4-run-coyote-inference) run Coyote inference, [(5)](artifacts/README.md#step-5-collect-coyote-inference-metrics) collect Coyote inference metrics, and [(6)](artifacts/README.md#step-6-recreate-the-paper-plots) recreate the paper plots. Steps 1 to 3 and 6 can be run on any machine with Python, Vivado, and Vitis installed. Step 4 uses AMD Alveo U55C cards on the [ETHZ HACC cluster](https://github.com/fpgasystems/hacc), which is publicly available but requires an account, or an equivalent local U55C setup; see the [independent setup notes](artifacts/README.md#independent-set-up) for the latter.
 
-Once the artifact has been approved, this branch will remain frozen as the reference point for comparisons with the paper. Future development will continue on the upstream `main` branch and will not affect this artifact branch. Additionally, a copy of the approved artifact will be uploaded to Zenodo.
+This branch will remain frozen as the reference point for comparisons with the paper. Future development will continue on the upstream `main` branch and will not affect this artifact branch. Additionally, a copy of the approved artifact is uploaded to Zenodo.
 
 ## hls4ml-gravnet
 

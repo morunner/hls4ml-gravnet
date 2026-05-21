@@ -43,7 +43,7 @@ uv pip install -e .
 If you already have a project and want to add this package to your existing virtual environment:
 
 ```bash
-uv add git+https://github.com/morunner/hls4ml-gravnet.git
+uv add git+https://github.com/fpgasystems/hls4ml-gravnet.git
 ```
 
 ## Usage
